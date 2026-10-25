@@ -47,22 +47,33 @@ const byId=new Map();         // asteroides de región activos: id -> entidad
 const spr=new Map();          // sprites reutilizados (anomalías)
 const T={sweep:0,slow:0,pre:0};
 
-/* ---- formas de las regiones: rect | ellipse | circle (x,y = centro) ---- */
+/* ---- formas de las regiones: rect | ellipse | circle | blob (x,y = centro) ----
+   blob = contorno orgánico e irregular inscrito en w×h (determinista por id): nunca sale del rectángulo w×h. */
+const bk=(m,t)=>.85+.15*(.45*Math.sin(2*t+m.ph[0])+.3*Math.sin(3*t+m.ph[1])+.15*Math.sin(5*t+m.ph[2])+.1*Math.sin(7*t+m.ph[3]));   // radio relativo (0.7–1) según el ángulo
 function inside(m,x,y,pad=0){const dx=Math.abs(x-m.x),dy=Math.abs(y-m.y);
+  if(m.shape==='blob'){const u=(x-m.x)/(m.w/2),v=(y-m.y)/(m.h/2);return Math.hypot(u,v)<=bk(m,Math.atan2(v,u))+pad/Math.min(m.w/2,m.h/2)}
   if(m.shape==='circle')return Math.hypot(dx,dy)<=m.r+pad;
   if(m.shape==='ellipse')return(dx/(m.w/2+pad))**2+(dy/(m.h/2+pad))**2<=1;
   return dx<=m.w/2+pad&&dy<=m.h/2+pad}
 function dist(m,x,y){const dx=Math.abs(x-m.x),dy=Math.abs(y-m.y);
+  if(m.shape==='blob'){const u=(x-m.x)/(m.w/2),v=(y-m.y)/(m.h/2);return Math.max(0,Math.hypot(u,v)-bk(m,Math.atan2(v,u)))*Math.min(m.w/2,m.h/2)}
   if(m.shape==='circle')return Math.max(0,Math.hypot(dx,dy)-m.r);
   if(m.shape==='ellipse'){const a=m.w/2,b=m.h/2,k=Math.hypot(dx/a,dy/b);return k<=1?0:(k-1)*Math.min(a,b)}
   return Math.hypot(Math.max(0,dx-m.w/2),Math.max(0,dy-m.h/2))}
 const ext=m=>m.shape==='circle'?[m.x-m.r,m.y-m.r,m.x+m.r,m.y+m.r]:[m.x-m.w/2,m.y-m.h/2,m.x+m.w/2,m.y+m.h/2];
-const area=m=>m.shape==='circle'?Math.PI*m.r*m.r:m.shape==='ellipse'?Math.PI*m.w*m.h/4:m.w*m.h;
+const area=m=>m.shape==='circle'?Math.PI*m.r*m.r:m.shape==='ellipse'?Math.PI*m.w*m.h/4:m.shape==='blob'?Math.PI*m.w*m.h/4*.74:m.w*m.h;
+
+/* ---- eventos (events.js): se carga solo desde aquí; cualquier fallo se captura y el juego sigue ---- */
+let evSt='loading';
+const EV=f=>{try{return typeof RGEV!=='undefined'?f(RGEV):undefined}catch(e){console.warn('[eventos]',e)}};
+const fullHash=()=>HASH+(typeof RGEV!=='undefined'&&RGEV.ver?'.e'+RGEV.ver:'');   // host e invitado deben tener la misma versión de events.js
+function loadEvents(){try{const sc=document.createElement('script');sc.src=url('events.js');sc.onload=()=>{evSt=typeof RGEV!=='undefined'?'ok':'fail'};sc.onerror=()=>{evSt='fail';console.warn('[eventos] no se pudo cargar events.js; el juego sigue sin eventos de región')};document.head.appendChild(sc)}catch(e){evSt='fail'}}
 
 /* ---- jugadores a considerar: en multijugador el anfitrión ve a todos (mpPos del motor) ---- */
 function players(){try{if(typeof mpPos==='function'){const p=mpPos();if(p&&p.length)return p}}catch(e){}return[{x:ship.x,y:ship.y}]}
 const near=(pl,x,y,r)=>pl.some(p=>Math.hypot(p.x-x,p.y-y)<r);
 const isGuest=()=>typeof MP!=='undefined'&&MP.role==='guest';
+const CTX={LIST:()=>LIST,inside,dist,players,isGuest,clock:()=>clock};
 
 /* ============================== REGISTRO ============================== */
 async function loadRegistry(){
@@ -73,7 +84,8 @@ async function loadRegistry(){
         (q.shape==='circle'?+q.r>0:+q.w>0&&+q.h>0)&&(q.builtin||(typeof q.file==='string'&&/^[\w.-]+\.json$/.test(q.file)));   // el archivo debe estar en la raíz (sin carpetas)
       if(!ok){console.warn('[regiones] entrada de registro inválida, se ignora:',q&&q.id);continue}
       seen.add(q.id);idxs.add(q.idx);
-      const m={id:q.id,idx:q.idx,name:String(q.name||q.id),builtin:!!q.builtin,file:q.file,shape:q.shape==='circle'||q.shape==='ellipse'?q.shape:'rect',x:+q.x,y:+q.y,r:+q.r||0,w:+q.w||(+q.r*2),h:+q.h||(+q.r*2),density:cl(num(q.density,.5),0,3),color:/^\d{1,3},\d{1,3},\d{1,3}$/.test(q.color)?q.color:'150,180,220',v:q.v|0};
+      const m={id:q.id,idx:q.idx,name:String(q.name||q.id),builtin:!!q.builtin,file:q.file,shape:q.shape==='circle'||q.shape==='ellipse'||q.shape==='blob'?q.shape:'rect',x:+q.x,y:+q.y,r:+q.r||0,w:+q.w||(+q.r*2),h:+q.h||(+q.r*2),density:cl(num(q.density,.5),0,3),color:/^\d{1,3},\d{1,3},\d{1,3}$/.test(q.color)?q.color:'150,180,220',v:q.v|0};
+      if(m.shape==='blob')m.ph=[0,1,2,3].map(i=>h32(m.id+':contorno:'+i)%628/100);
       if(m.builtin&&m.shape==='circle'&&typeof RINGR==='number')m.r=Math.max(m.r,Math.ceil((RINGR+(typeof RINGW==='number'?RINGW:2400))*1.08));   // la región original abarca su aro
       const R={id:m.id,m,st:m.builtin?'builtin':'idle',det:null,tries:0,retry:0,use:0,dep:new Map(),def:new Set(),fd:new Set(),vis:false,act:new Map(),grid:new Map(),ast:[],build:null,done:false,sent:new Map(),stn:[],spk:null,want:-99,todo:[],off:[]};
       out.push(R);REG.set(m.id,R);
@@ -100,6 +112,7 @@ function norm(d,R){
   for(const a of S(d.anomalies,100))if(a&&Number.isFinite(+a.x)&&Number.isFinite(+a.y))o.anomalies.push({id:String(a.id||'a'+o.anomalies.length),t:a.t==='i'||a.t==='w'?a.t:'e',n:String(a.n||'Anomalía'),x:+a.x,y:+a.y,r:cl(num(a.r,600),60,8000),col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(a.col)?a.col:'120,255,170'});
   for(const p of S(d.poi,100))if(p&&Number.isFinite(+p.x)&&Number.isFinite(+p.y))o.poi.push({id:String(p.id||'p'+o.poi.length),n:String(p.n||'Punto de interés'),x:+p.x,y:+p.y,col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(p.col)?p.col:'255,220,120'});
   for(const e of S(d.enemies,300))if(e&&Number.isFinite(+e.x)&&Number.isFinite(+e.y))o.enemies.push({id:String(e.id||'e'+o.enemies.length),x:+e.x,y:+e.y,n:cl(num(e.n,1)|0,1,12),radius:cl(num(e.radius,1000),100,6000),tier:cl(num(e.tier,tier),0,4)});
+  if(d.event&&typeof d.event==='object')o.event=d.event;
   o.total=total;return o}
 
 async function load(R){
@@ -197,7 +210,7 @@ function stepFound(R,pl){
 function update(dt){
   if(!regOk||typeof state==='undefined'||state==='menu')return;
   clock+=dt;
-  if(hostHash!==null&&HASH&&!lock&&hostHash!==HASH)setLock('Esta sala usa otra versión de las regiones: el contenido de las expansiones se desactiva en tu partida');
+  if(hostHash!==null&&HASH&&!lock&&evSt!=='loading'&&hostHash!==fullHash())setLock('Esta sala usa otra versión de las regiones: el contenido de las expansiones se desactiva en tu partida');
   const pl=players(),ready=LIST.filter(r=>r.st==='ready');
   // 1) generación progresiva (un solo presupuesto de tiempo para todo)
   for(const R of ready)if(R.build){buildStep(R);break}
@@ -207,6 +220,7 @@ function update(dt){
     if(lock){if(R.act.size){for(const e of R.act.values()){e.dead=1;byId.delete(e.id)}R.act.clear()}continue}
     if(plan)planAst(R,pl);
     stepAst(R);stepEn(R,pl,2);if(plan)stepFound(R,pl)}
+  if(lock)EV(r=>r.abort());else EV(r=>r.update(dt,CTX));
   // 3) tareas lentas (0.5 s): región actual, carga anticipada, caducidad, caché
   T.slow-=dt;if(T.slow>0)return;T.slow=.5;
   const p0=pl[0];
@@ -231,6 +245,7 @@ function spk(R){if(R.spk)return R.spk;const m=R.m,rg=mul(h32(R.id)),n=Math.round
 function pathShape(m,X,Y,s){g.beginPath();
   if(m.shape==='circle')g.arc(X(m.x),Y(m.y),m.r*s,0,TAU);
   else if(m.shape==='ellipse')g.ellipse(X(m.x),Y(m.y),m.w/2*s,m.h/2*s,0,0,TAU);
+  else if(m.shape==='blob'){for(let i=0;i<=120;i++){const t=i/120*TAU,k=bk(m,t),x=X(m.x+Math.cos(t)*k*m.w/2),y=Y(m.y+Math.sin(t)*k*m.h/2);i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()}
   else g.rect(X(m.x-m.w/2),Y(m.y-m.h/2),m.w*s,m.h*s)}
 function drawMap(X,Y,M){
   if(!LIST.length)return;const s=M.s;g.save();
@@ -238,8 +253,14 @@ function drawMap(X,Y,M){
     const m=R.m,[x0,y0,x1,y1]=ext(m),sx0=X(x0),sx1=X(x1),sy0=Y(y0),sy1=Y(y1);
     if(sx1<-40||sx0>W+40||sy1<-40||sy0>H+40)continue;
     const px=Math.max(sx1-sx0,sy1-sy0),c=m.color;
-    if(!m.builtin){pathShape(m,X,Y,s);g.fillStyle='rgba('+c+','+(.04+Math.min(.1,m.density*.08))+')';g.fill()}
-    g.setLineDash([10,7]);g.lineWidth=m.builtin?1:1.5;g.strokeStyle='rgba('+c+','+(m.builtin?.3:.55)+')';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);
+    if(!m.builtin){
+      /* igual que la zona interior de index: lejos = relleno y reborde con color; al acercar el zoom se difuminan (queda un halo tenue) */
+      const z0=typeof SYSZ0==='number'?SYSZ0:.0075,z1=typeof SYSZ1==='number'?SYSZ1:.0105,f0=cl((z1-s)/(z1-z0),0,1),f=f0*f0*(3-2*f0);
+      pathShape(m,X,Y,s);g.fillStyle='rgba('+c+','+((.04+Math.min(.1,m.density*.08))*f)+')';g.fill();
+      g.setLineDash([]);g.lineJoin='round';
+      for(const[lw,al]of[[14,.035],[8,.06],[4,.1]]){pathShape(m,X,Y,s);g.lineWidth=lw;g.strokeStyle='rgba('+c+','+(al*(.35+.65*f))+')';g.stroke()}   // halo suave
+      g.setLineDash([10,7]);g.lineWidth=1.5;g.strokeStyle='rgba('+c+','+(.55*(.22+.78*f))+')';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);
+    }else{g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([])}
     if(!m.builtin&&px>140&&R.st!=='ready')R.want=clock;                       // el mapa pide el detalle cuando se acerca el zoom
     if(!R.det){                                                               // simplificada: solo metadatos
       if(!m.builtin){g.fillStyle='rgba('+c+',.55)';for(const q of spk(R)){const x=X(q[0]),y=Y(q[1]);if(x>-5&&x<W+5&&y>-5&&y<H+5)g.fillRect(x-1,y-1,2,2)}}
@@ -264,6 +285,7 @@ function onZoom(f){if(f>=1||!LIST.length)return;const mz=minZoom();if(zoom>mz*1.
 /* ============================== DIBUJO EN EL MUNDO ============================== */
 function sprite(col){let c=spr.get(col);if(c)return c;c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),q=x.createRadialGradient(64,64,0,64,64,64);q.addColorStop(0,'rgba('+col+',.38)');q.addColorStop(1,'rgba('+col+',0)');x.fillStyle=q;x.fillRect(0,0,128,128);spr.set(col,c);return c}
 function drawWorld(){
+  EV(r=>r.drawWorld());
   for(const R of LIST){if(R.st!=='ready')continue;
     for(const a of R.det.anomalies){if(!vis(a.x,a.y,a.r+200))continue;const pu=.8+.2*Math.sin(time*2+a.x);g.globalAlpha=pu;g.drawImage(sprite(a.col),a.x-a.r,a.y-a.r,a.r*2,a.r*2);g.globalAlpha=1;
       if(a.t==='i'){g.strokeStyle='rgba('+a.col+',.5)';g.lineWidth=1.5;for(let i=0;i<5;i++){const t=time*1.5+i*1.26+a.y,r=a.r*(.3+.15*i);g.beginPath();g.moveTo(a.x+Math.cos(t)*r,a.y+Math.sin(t)*r);g.lineTo(a.x+Math.cos(t+.4)*(r+40),a.y+Math.sin(t+.4)*(r+40));g.stroke()}}
@@ -279,8 +301,10 @@ function save(){
   const items=LIST.length?LIST:Object.keys(SV).map(id=>({id,dep:new Map((SV[id].dp||[])),def:new Set(SV[id].df||[]),fd:new Set(SV[id].fd||[]),vis:SV[id].vs}));
   for(const R of items){const dp=[...R.dep],df=[...R.def],fd=[...R.fd];if(dp.length||df.length||fd.length||R.vis)o.r[R.id]={dp,df,fd,vs:R.vis?1:0}}
   if(ship.docked&&ship.docked.rg)o.dock={r:ship.docked.rg,n:ship.docked.n};
+  const ev=EV(r=>r.save());if(ev&&ev.c&&ev.c.length)o.e=ev;
   return o}
 function loadSave(d){                       // las partidas anteriores no tienen 'rg': empiezan vacías (sin migración necesaria)
+  EV(r=>r.load(d&&d.e));
   SV={};pendDock=null;if(!d||typeof d!=='object'||d.v!==1||!d.r||typeof d.r!=='object'){applyState();return}
   for(const id in d.r){const s=d.r[id];if(s&&typeof s==='object')SV[id]={dp:s.dp,df:s.df,fd:s.fd,vs:s.vs}}
   if(d.dock&&typeof d.dock.r==='string'&&typeof d.dock.n==='string')pendDock={r:d.dock.r,n:d.dock.n};
@@ -295,21 +319,23 @@ function mpDiff(full){
   for(const R of LIST){if(R.st!=='ready')continue;
     for(const[i,e]of R.act){const last=R.sent.has(i)&&!full?R.sent.get(i):e.r*1.1;if(Math.abs(e.ore-last)>.05){ore.push([e.id,+e.ore.toFixed(2)]);R.sent.set(i,e.ore)}}
     for(const[i]of R.dep){if(!R.sent.has('d'+i)||full){R.sent.set('d'+i,1);(dep[R.id]=dep[R.id]||[]).push(i)}}}
-  if(!ore.length&&!Object.keys(dep).length)return null;return{o:ore,d:dep}}
+  const ev=EV(r=>r.mpDiff(full));
+  if(!ore.length&&!Object.keys(dep).length&&!ev)return null;return{o:ore,d:dep,ev:ev||undefined}}
 function mpApply(D){
   if(!D||lock)return;
+  if(D.ev)EV(r=>r.mpApply(D.ev));
   for(const[id,ore]of D.o||[]){const e=byId.get(id);if(e){e.ore=ore;if(ore<=.01)e.dead=1}}
   for(const id in D.d||{}){const R=REG.get(id);if(!R)continue;for(const i of D.d[id]){if(!R.dep.has(i)){R.dep.set(i,R.det&&R.det.regen>0?Date.now()+R.det.regen*60000:0)}const e=R.act.get(i);if(e){e.dead=1;R.act.delete(i);byId.delete(e.id)}}}}
 function mpHash(h){hostHash=String(h)}
 
 /* ---- arranque ---- */
-if(!/[?&]noregions\b/.test(location.search))loadRegistry();   // ?noregions en la URL desactiva las expansiones (útil para comparar/diagnosticar)
+if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?noregions en la URL desactiva las expansiones (útil para comparar/diagnosticar)
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,minZoom,onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>HASH,
+  update,drawMap,drawWorld,minZoom,onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
-  debug:()=>({regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,
+  debug:()=>({ev:evSt,evd:EV(r=>r.debug()),regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,
     regions:LIST.map(r=>({id:r.id,st:r.st,ast:r.ast.length,act:r.act.size,dep:r.dep.size,def:r.def.size,fd:r.fd.size,built:r.done,stn:r.stn.map(s=>s.n)}))}),
   _:{inside,dist,REG,byId,live,unload,load}
 }})();

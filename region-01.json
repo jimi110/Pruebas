@@ -1,9 +1,10 @@
 {
   "id": "region-01", "seed": 1101, "tier": 2, "danger": 2, "regenMin": 30,
+  "event": { "fleet": 5, "boss": "Centinela Zafiro", "hp": 1200, "reward": 800 },
   "asteroids": {
     "fields": [
       { "n": "Campo Zafiro", "x": 100000, "y": -15000, "rx": 5200, "ry": 3400, "rot": 0.4, "count": 90, "tier": 2, "ore": [["cu",0.3],["cr",0.35],["pt",0.2],["ti",0.15]] },
-      { "n": "Jirón Lapislázuli", "x": 128000, "y": 2000, "rx": 6500, "ry": 1800, "rot": -0.6, "count": 70, "tier": 2, "ore": [["cr",0.3],["pt",0.3],["ti",0.25],["ir",0.15]] }
+      { "n": "Jirón Lapislázuli", "x": 125000, "y": -4000, "rx": 6500, "ry": 1800, "rot": -0.6, "count": 70, "tier": 2, "ore": [["cr",0.3],["pt",0.3],["ti",0.25],["ir",0.15]] }
     ],
     "scatter": { "count": 120, "tier": 1, "ore": [["fe",0.4],["cu",0.4],["cr",0.2]] }
   },
@@ -14,10 +15,10 @@
     { "id": "a1", "t": "e", "n": "Nube de energía zafiro", "x": 120000, "y": -22000, "r": 1800, "col": "110,170,255" }
   ],
   "poi": [
-    { "id": "p1", "n": "Baliza antigua", "x": 98000, "y": 6000, "col": "255,220,120" }
+    { "id": "p1", "n": "Baliza antigua", "x": 99000, "y": 1000, "col": "255,220,120" }
   ],
   "enemies": [
     { "id": "e1", "x": 104000, "y": -16000, "n": 3, "radius": 1400, "tier": 2 },
-    { "id": "e2", "x": 130000, "y": 3000,  "n": 4, "radius": 1800, "tier": 3 }
+    { "id": "e2", "x": 125000, "y": -4000, "n": 4, "radius": 1800, "tier": 3 }
   ]
 }
