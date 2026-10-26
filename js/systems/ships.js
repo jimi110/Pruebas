@@ -242,7 +242,7 @@ const mk=(team,x,y,home)=>({team,x,y,vx:0,vy:0,a:rnd(0,TAU),hp:team==='g'?70:40,
 for(let i=0;i<4;i++)npcs.push(mk('g',700+rnd(-200,200),rnd(-300,300),A));
 const boom=(x,y,n,c)=>{sfx('b',{x,y},n);if(n>=16)rings.push({x,y,t:0,r:n*3});for(let i=0;i<n;i++){const a=rnd(0,TAU),s=rnd(30,220);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.3,.9),max:.9,c})}};
 const bl=(o,a,own,d)=>(sfx('s',o,own),{x:o.x+Math.cos(a)*16,y:o.y+Math.sin(a)*16,vx:(o.vx||0)+Math.cos(a)*900,vy:(o.vy||0)+Math.sin(a)*900,life:1,own,d,o});
-const lead=(o,t)=>{const tt=dist(o,t)/900;return Math.atan2(t.y+((t.vy||0)-(o.vy||0))*tt-o.y,t.x+((t.vx||0)-(o.vx||0))*tt-o.x)};const jumpCost=d=>CFG.ie?0:Math.ceil(Math.max(30,30+d/(650*C.jr))*T.jump*(eff('jmp')<1?1.5:1));
+const lead=(o,t,sp=900)=>{const tt=dist(o,t)/sp;return Math.atan2(t.y+((t.vy||0)-(o.vy||0))*tt-o.y,t.x+((t.vx||0)-(o.vx||0))*tt-o.x)};const jumpCost=d=>CFG.ie?0:Math.ceil(Math.max(30,30+d/(650*C.jr))*T.jump*(eff('jmp')<1?1.5:1));
 const dgT=()=>{const L=dgr(ship.x,ship.y);return L?' · peligro '+L:''};
 const zone=()=>{if(dist(ship,A)<C.safeR)return'Zona protegida de Alfa';if(!sczDead()&&dist(ship,SCZ)<SCZ.r)return'♻ '+SCZ.n+' · chatarra';if(dist(ship,B)<1500)return'⚠ Zona de peligro · Beta'+dgT();const F=FIELDS.find(f=>f.ins(ship.x,ship.y));return F?'⚠ '+F.n+' · '+F.dng+dgT():'Espacio profundo'+dgT()};
 
