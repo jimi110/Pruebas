@@ -82,6 +82,7 @@ async function loadRegistry(){
     for(const q of Array.isArray(j.regions)?j.regions:[]){
       const ok=q&&/^[\w-]{1,40}$/.test(q.id)&&Number.isInteger(q.idx)&&q.idx>=0&&q.idx<900&&!seen.has(q.id)&&!idxs.has(q.idx)&&Number.isFinite(+q.x)&&Number.isFinite(+q.y)&&
         (q.shape==='circle'?+q.r>0:+q.w>0&&+q.h>0)&&(q.builtin||(typeof q.file==='string'&&/^[\w.-]+\.json$/.test(q.file)));   // el archivo debe estar en la raíz (sin carpetas)
+      if(q&&q.enabled===false)continue;   // región desactivada en regions.json: no se carga ni se dibuja
       if(!ok){console.warn('[regiones] entrada de registro inválida, se ignora:',q&&q.id);continue}
       seen.add(q.id);idxs.add(q.idx);
       const m={id:q.id,idx:q.idx,name:String(q.name||q.id),builtin:!!q.builtin,file:q.file,shape:q.shape==='circle'||q.shape==='ellipse'||q.shape==='blob'?q.shape:'rect',x:+q.x,y:+q.y,r:+q.r||0,w:+q.w||(+q.r*2),h:+q.h||(+q.r*2),density:cl(num(q.density,.5),0,3),color:/^\d{1,3},\d{1,3},\d{1,3}$/.test(q.color)?q.color:'150,180,220',v:q.v|0};
@@ -247,6 +248,11 @@ function pathShape(m,X,Y,s){g.beginPath();
   else if(m.shape==='ellipse')g.ellipse(X(m.x),Y(m.y),m.w/2*s,m.h/2*s,0,0,TAU);
   else if(m.shape==='blob'){for(let i=0;i<=120;i++){const t=i/120*TAU,k=bk(m,t),x=X(m.x+Math.cos(t)*k*m.w/2),y=Y(m.y+Math.sin(t)*k*m.h/2);i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()}
   else g.rect(X(m.x-m.w/2),Y(m.y-m.h/2),m.w*s,m.h*s)}
+/* Factor de 'resumen' (0 = detalle · 1 = zona resumida) igual que Sistema Alfa: usa SYSZ0/SYSZ1 de ui.js */
+const sumF=s=>{const z0=typeof SYSZ0==='number'?SYSZ0:.0075,z1=typeof SYSZ1==='number'?SYSZ1:.0105,t=cl((z1-s)/(z1-z0),0,1);return t*t*(3-2*t)};
+function regAt(x,y){let b=null;for(const R of LIST)if(!R.m.builtin&&inside(R.m,x,y)&&(!b||area(R.m)<area(b.m)))b=R;return b}
+function sumA(x,y,s){return regAt(x,y)?sumF(s):0}       // 0..1: cuánto está resumida la región que contiene (x,y)
+function sumName(x,y,s){const R=s<(typeof SYSZ0==='number'?SYSZ0:.0075)?regAt(x,y):null;return R?R.m.name:null}
 function drawMap(X,Y,M){
   if(!LIST.length)return;const s=M.s;g.save();
   for(const R of LIST){
@@ -254,25 +260,32 @@ function drawMap(X,Y,M){
     if(sx1<-40||sx0>W+40||sy1<-40||sy0>H+40)continue;
     const px=Math.max(sx1-sx0,sy1-sy0),c=m.color;
     if(!m.builtin){
-      /* igual que la zona interior de index: lejos = relleno y reborde con color; al acercar el zoom se difuminan (queda un halo tenue) */
-      const z0=typeof SYSZ0==='number'?SYSZ0:.0075,z1=typeof SYSZ1==='number'?SYSZ1:.0105,f0=cl((z1-s)/(z1-z0),0,1),f=f0*f0*(3-2*f0);
-      pathShape(m,X,Y,s);g.fillStyle='rgba('+c+','+((.04+Math.min(.1,m.density*.08))*f)+')';g.fill();
+      /* igual que Sistema Alfa: lejos = zona resumida (fondo oscuro, borde marcado, solo el nombre); al acercar el zoom se funde y aparece el detalle */
+      const f=sumF(s);
+      pathShape(m,X,Y,s);g.fillStyle='rgba('+c+','+(.04+Math.min(.1,m.density*.08))*(1-f)+')';g.fill();
+      if(f>0){g.save();g.globalAlpha=f;pathShape(m,X,Y,s);g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba('+c+',.13)';g.fill();g.restore()}
       g.setLineDash([]);g.lineJoin='round';
       for(const[lw,al]of[[14,.035],[8,.06],[4,.1]]){pathShape(m,X,Y,s);g.lineWidth=lw;g.strokeStyle='rgba('+c+','+(al*(.35+.65*f))+')';g.stroke()}   // halo suave
-      g.setLineDash([10,7]);g.lineWidth=1.5;g.strokeStyle='rgba('+c+','+(.55*(.22+.78*f))+')';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);
+      g.setLineDash([10,7]);g.lineWidth=1.5+.5*f;g.strokeStyle='rgba('+c+','+(.55*(.55+.45*f))+')';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);
     }else{g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([])}
     if(!m.builtin&&px>140&&R.st!=='ready')R.want=clock;                       // el mapa pide el detalle cuando se acerca el zoom
-    if(!R.det){                                                               // simplificada: solo metadatos
-      if(!m.builtin){g.fillStyle='rgba('+c+',.55)';for(const q of spk(R)){const x=X(q[0]),y=Y(q[1]);if(x>-5&&x<W+5&&y>-5&&y<H+5)g.fillRect(x-1,y-1,2,2)}}
+    const fs=m.builtin?0:sumF(s);                                             // factor de resumen (igual que Alfa)
+    if(fs>=1){}                                                               // zona resumida: no se dibuja nada de dentro
+    else if(!R.det){                                                          // simplificada: solo metadatos
+      if(!m.builtin){g.globalAlpha=1-fs;g.fillStyle='rgba('+c+',.55)';for(const q of spk(R)){const x=X(q[0]),y=Y(q[1]);if(x>-5&&x<W+5&&y>-5&&y<H+5)g.fillRect(x-1,y-1,2,2)}g.globalAlpha=1}
     }else{
+      g.globalAlpha=1-fs;
       if(s>.0012)for(const j of R.det.jobs)if(j.k==='f'){g.save();g.translate(X(j.x),Y(j.y));g.rotate(j.rot);g.beginPath();g.ellipse(0,0,j.rx*s,j.ry*s,0,0,TAU);g.fillStyle='rgba('+c+',.13)';g.fill();g.strokeStyle='rgba('+c+',.4)';g.lineWidth=1;g.stroke();g.restore();if(s>.0025)txt(j.nm,X(j.x),Y(j.y)+j.ry*s+11,'rgba('+c+',.8)','center',9)}
       if(s>.0025){for(const a of R.det.anomalies){g.beginPath();g.arc(X(a.x),Y(a.y),Math.max(3,a.r*s),0,TAU);g.fillStyle='rgba('+a.col+',.28)';g.fill();txt(a.n,X(a.x),Y(a.y)-Math.max(3,a.r*s)-3,'rgba('+a.col+',.85)','center',8)}
         for(const p of R.det.poi){const x=X(p.x),y=Y(p.y);g.fillStyle='rgba('+p.col+',.95)';g.beginPath();g.moveTo(x,y-4);g.lineTo(x+4,y);g.lineTo(x,y+4);g.lineTo(x-4,y);g.closePath();g.fill();txt(p.n,x+7,y+3,'rgba('+p.col+',.8)','left',8)}}
       if(s>.012){g.fillStyle='rgba('+c+',.9)';for(let i=0;i<R.ast.length;i++){const a=R.ast[i],x=X(a.x),y=Y(a.y);if(x>-3&&x<W+3&&y>-3&&y<H+3&&!R.dep.has(i))g.fillRect(x-1,y-1,2,2)}}
+      g.globalAlpha=1
     }
     // etiqueta
+    if(fs>0&&px>40){g.save();g.globalAlpha=fs;const cx=Math.max(60,Math.min(W-60,(sx0+sx1)/2)),cy=Math.max(24,Math.min(H-16,(sy0+sy1)/2));
+      txt(m.name.toUpperCase(),cx,cy-8,'rgba('+c+',.98)','center',18);txt('zona de expansión · se detalla al acercar el zoom',cx,cy+12,'rgba('+c+',.7)','center',10);g.restore()}
     const lx=(sx0+sx1)/2,ly=m.builtin?sy0-8:Math.max(sy0+14,12);
-    if((px>14&&!m.builtin)||(m.builtin&&px>40&&px<1500)){const lab=m.name.toUpperCase();txt(lab,Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly)),'rgba('+c+',.95)','center',px>300?13:px>60?10:8);
+    if(fs<1&&((px>14&&!m.builtin)||(m.builtin&&px>40&&px<1500))){const lab=m.name.toUpperCase();txt(lab,Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly)),'rgba('+c+',.95)','center',px>300?13:px>60?10:8);
       if(px>150&&!m.builtin){const sub=R.st==='ready'?'':R.st==='loading'?'cargando…':R.st==='error'?'⚠ sin datos (reintentando)':'';if(sub||px>220)txt((km(m.w)+' × '+km(m.h))+(sub?' · '+sub:''),Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly))+13,'rgba('+c+',.6)','center',9)}}
   }
   g.restore()}
@@ -300,6 +313,7 @@ function save(){
   const o={v:1,r:{}};
   const items=LIST.length?LIST:Object.keys(SV).map(id=>({id,dep:new Map((SV[id].dp||[])),def:new Set(SV[id].df||[]),fd:new Set(SV[id].fd||[]),vis:SV[id].vs}));
   for(const R of items){const dp=[...R.dep],df=[...R.def],fd=[...R.fd];if(dp.length||df.length||fd.length||R.vis)o.r[R.id]={dp,df,fd,vs:R.vis?1:0}}
+  for(const id in SV)if(!REG.has(id)&&!o.r[id])o.r[id]=SV[id];   // regiones desactivadas: conservar su progreso
   if(ship.docked&&ship.docked.rg)o.dock={r:ship.docked.rg,n:ship.docked.n};
   const ev=EV(r=>r.save());if(ev&&ev.c&&ev.c.length)o.e=ev;
   return o}
@@ -333,7 +347,7 @@ if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,minZoom,onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
+  update,drawMap,drawWorld,sumA,sumName,minZoom,onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
   debug:()=>({ev:evSt,evd:EV(r=>r.debug()),regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,
     regions:LIST.map(r=>({id:r.id,st:r.st,ast:r.ast.length,act:r.act.size,dep:r.dep.size,def:r.def.size,fd:r.fd.size,built:r.done,stn:r.stn.map(s=>s.n)}))}),
