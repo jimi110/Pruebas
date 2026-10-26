@@ -347,7 +347,9 @@ if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,sumA,sumName,minZoom,onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
+  update,drawMap,drawWorld,sumA,sumName,minZoom,
+  cleared:id=>!!EV(r=>r.cleared(id)),locked:()=>!!EV(r=>r.lockJump()),
+  vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
   debug:()=>({ev:evSt,evd:EV(r=>r.debug()),regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,
     regions:LIST.map(r=>({id:r.id,st:r.st,ast:r.ast.length,act:r.act.size,dep:r.dep.size,def:r.def.size,fd:r.fd.size,built:r.done,stn:r.stn.map(s=>s.n)}))}),
