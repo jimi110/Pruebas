@@ -4,7 +4,7 @@
    comparte el ámbito global con el resto de js/. NO cambies el orden de carga en index.html.)
    ========================================================================== */
 "use strict";
-function worldUpd(dt){if(mpSlave()){spawnT=3;cmT=1e9;GEV.t=1e9}RGH(r=>r.update(dt));
+function worldUpd(dt){if(mpSlave()){spawnT=3;cmT=1e9;GEV.t=1e9}RGH(r=>r.update(dt));if(typeof impUpd==='function')try{impUpd(dt)}catch(e){console.warn('[implosión]',e)}
   evUpd(dt);miniEv(dt);gevTick(dt);derel=derel.filter(d=>!d.dead);
   if(state!=='menu'){if(!BAL.comet.on())cmT=Math.max(cmT,BAL.comet.first);else{cmT-=dt;if(cmT<=0){cmT=rnd(BAL.comet.cd[0],BAL.comet.cd[1]);mpAt(spawnComet)}}}
   for(const c of cmts){c.x+=c.vx*dt;c.y+=c.vy*dt;c.age+=dt;c.rot+=dt*.6;if(c.r0)c.r=c.r0*(.4+.6*Math.sqrt(Math.max(0,c.ore)/c.o0));
