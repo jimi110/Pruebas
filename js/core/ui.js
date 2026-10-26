@@ -172,10 +172,10 @@ addEventListener('keydown',e=>{const c=e.code;
 const SYSN='Sistema Alfa',SYSZ0=.0075,SYSZ1=.0105;
 const sysR=a=>{const F=FIELDS.find(q=>q.ring);return F?((F.rr(a)+RINGW*1.25)*1.05+700):0},sysIn=(x,y)=>{const r=sysR(Math.atan2(y,x));return r>0&&Math.hypot(x,y)<r};
 function mt(){return{s:zoom,ox:W/2-mc.x*zoom,oy:H/2-mc.y*zoom}}
-function pickPoint(px,py){if(ship.dead>0)return;const M=mt(),sy0=zoom<SYSZ0&&sysR(0),L=[...BASES.filter(b=>(b===A||known(b,b.r+300))&&!(sy0&&sysIn(b.x,b.y))).map(b=>({n:b.n,x:b.x+150,y:b.y,cx:b.x,cy:b.y})),...FIELDS.filter(F=>!F.ring&&fk(F)&&!(sy0&&sysIn(F.x,F.y))).map(F=>({n:F.n,x:F.x,y:F.y,cx:F.x,cy:F.y}))];
+function pickPoint(px,py){if(ship.dead>0)return;const M=mt(),sy0=zoom<SYSZ0&&sysR(0),L=[...BASES.filter(b=>(b===A||known(b,b.r+300))&&!(sy0&&sysIn(b.x,b.y))&&!(b.rg&&RGH(r=>r.sumName(b.x,b.y,zoom)))).map(b=>({n:b.n,x:b.x+150,y:b.y,cx:b.x,cy:b.y})),...FIELDS.filter(F=>!F.ring&&fk(F)&&!(sy0&&sysIn(F.x,F.y))).map(F=>({n:F.n,x:F.x,y:F.y,cx:F.x,cy:F.y}))];
   let best=null,bd=40;for(const p of L){const d=Math.hypot(M.ox+p.cx*M.s-px,M.oy+p.cy*M.s-py);if(d<bd){bd=d;best=p}}
   if(best)sel={n:best.n,x:best.x,y:best.y,cx:best.cx,cy:best.cy};
-  else{const x=(px-M.ox)/M.s,y=(py-M.oy)/M.s;sel={n:sy0&&sysIn(x,y)?SYSN:(FIELDS.find(F=>F.ins(x,y)&&fk(F))||{n:'Coordenadas libres'}).n,x,y}}
+  else{const x=(px-M.ox)/M.s,y=(py-M.oy)/M.s;sel={n:sy0&&sysIn(x,y)?SYSN:RGH(r=>r.sumName(x,y,zoom))||(FIELDS.find(F=>F.ins(x,y)&&fk(F))||{n:'Coordenadas libres'}).n,x,y}}
   updInfo()}
 cv.addEventListener('pointerdown',e=>{mouse={x:e.clientX,y:e.clientY};
   if(state==='map'){}

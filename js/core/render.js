@@ -55,7 +55,7 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
   zone(A,C.safeR,['rgba(79,209,255,.09)','rgba(79,209,255,.5)']);zone(B,1500,['rgba(255,90,70,.09)','rgba(255,110,90,.5)']);FIELDS.forEach(F=>{fPoly(F,X,Y);g.fillStyle='rgba('+F.col+',.1)';g.fill('evenodd');g.strokeStyle='rgba('+F.col+',.4)';g.lineWidth=1;g.stroke()});
   RGH(r=>r.drawMap(X,Y,M));gevDraw(X,Y,M.s,1);
   for(const o of ANOM){const x=X(o.x+o.jx),y=Y(o.y+o.jy);if(o.found||MAPALL){g.beginPath();g.arc(X(o.x),Y(o.y),Math.max(3,o.r0*M.s),0,TAU);g.fillStyle=`rgba(${o.col},.3)`;g.fill();txt(o.n,X(o.x),Y(o.y)-o.r0*M.s-3,`rgba(${o.col},.8)`,'center',8)}else{g.fillStyle='rgba(255,255,255,.6)';g.fillRect(x-2,y-2,4,4);txt('? posible anomalía',x+6,y+3,'rgba(255,255,255,.45)','left',8)}}
-  g.fillStyle='rgba(190,200,220,.7)';for(const a of asts)g.fillRect(X(a.x)-1,Y(a.y)-1,2,2);
+  g.fillStyle='rgba(190,200,220,.7)';for(const a of asts){if(a.rg&&(RGH(r=>r.sumA(a.x,a.y,M.s))||0)>=1)continue;g.fillRect(X(a.x)-1,Y(a.y)-1,2,2)}
   for(const c of cmts){const x=X(c.x),y=Y(c.y);g.fillStyle='rgba('+CK[c.k].c+',.95)';g.beginPath();g.arc(x,y,3.5,0,TAU);g.fill();g.strokeStyle='rgba('+CK[c.k].c+',.5)';g.lineWidth=2;g.beginPath();g.moveTo(x,y);g.lineTo(x-c.vx/Math.hypot(c.vx,c.vy)*18,y-c.vy/Math.hypot(c.vx,c.vy)*18);g.stroke();txt('☄ '+CK[c.k].n,x+7,y+3,'rgba('+CK[c.k].c+',.9)','left',9)}
   FIELDS.forEach(F=>{txt(F.n.toUpperCase(),X(F.x),Y(F.ring?-F.r:F.y)+(F.ring?-28:F.r*M.s+14),'rgba('+F.col+',.95)','center',10);txt('⚠ '+F.dng,X(F.x),Y(F.ring?-F.r:F.y)+(F.ring?-16:F.r*M.s+26),'#ff8a70','center',9)});txt('⚠ ZONA DE PELIGRO',X(B.x),Y(B.y)+1500*M.s+14,'#ff8a70','center',10);
   const jf=Math.max(T.jump*(eff('jmp')<1?1.5:1),.01),rg=CFG.ie?1e5:(ship.en/jf-30)*650*C.jr,rm=CFG.ie?0:(100/jf-30)*650*C.jr;
@@ -66,13 +66,13 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
   const sysA=sysR(0)?clamp((SYSZ1-M.s)/(SYSZ1-SYSZ0),0,1):0;/* 0 = mapa normal · 1 = todo el interior del aro resumido en una zona */
   if(sysA>0){g.save();g.beginPath();for(let i=0;i<=180;i++){const a=i/180*TAU,r=sysR(a),x=X(Math.cos(a)*r),y=Y(Math.sin(a)*r);i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath();g.globalAlpha=sysA;g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba(79,209,255,.13)';g.fill();g.strokeStyle='rgba(120,215,255,.85)';g.lineWidth=2;g.setLineDash([10,6]);g.stroke();g.setLineDash([]);
     txt(SYSN.toUpperCase(),X(0),Y(0)-14,'rgba(190,236,255,.98)','center',20);txt('zona interior · se detalla al acercar el zoom',X(0),Y(0)+8,'rgba(150,210,240,.75)','center',10);g.restore()}
-  for(const b of BASES){const ins=sysA>0&&sysIn(b.x,b.y);if(ins&&sysA>=1)continue;g.globalAlpha=ins?1-sysA:1;const x=X(b.x),y=Y(b.y);g.strokeStyle=b.col;g.fillStyle='#0b1a2a';g.lineWidth=2;
+  for(const b of BASES){const ra=b.rg?(RGH(r=>r.sumA(b.x,b.y,M.s))||0):0;if(ra>=1)continue;const ins=sysA>0&&sysIn(b.x,b.y);if(ins&&sysA>=1)continue;g.globalAlpha=ra>0?1-ra:ins?1-sysA:1;const x=X(b.x),y=Y(b.y);g.strokeStyle=b.col;g.fillStyle='#0b1a2a';g.lineWidth=2;
     if(b===A){g.beginPath();g.arc(x,y,8,0,TAU);g.fill();g.stroke();g.beginPath();g.arc(x,y,13,0,TAU);g.globalAlpha=.4;g.stroke();g.globalAlpha=1}
     else if(b.small){g.fillRect(x-4,y-4,8,8);g.strokeRect(x-4,y-4,8,8)}else{g.fillRect(x-7,y-7,14,14);g.strokeRect(x-7,y-7,14,14);g.strokeRect(x-12,y-12,24,24)}
     txt(b.n,x,y-20,b.col,'center',12);txt(b.tag,x,y+28,b.col,'center',9)}g.globalAlpha=1;
   if(sel){g.setLineDash([3,5]);g.strokeStyle='rgba(125,255,155,.7)';g.lineWidth=1.5;g.beginPath();g.moveTo(X(ship.x),Y(ship.y));g.lineTo(X(sel.x),Y(sel.y));g.stroke();g.setLineDash([]);
     brk(X(sel.cx??sel.x),Y(sel.cy??sel.y),16+3*Math.sin(time*5),'#7dff9b')}
-  for(const n of npcs){if(n.team!=='e'||n.hp<=0||(sysA>=1&&sysIn(n.x,n.y)))continue;const x=X(n.x),y=Y(n.y);g.fillStyle=n.boss?'#ff9a4f':'#ff4d4d';if(n.boss){g.fillRect(x-5,y-5,10,10);g.strokeStyle='#ff9a4f';g.lineWidth=1.5;g.strokeRect(x-9,y-9,18,18)}else{g.beginPath();g.arc(x,y,3,0,TAU);g.fill()}}
+  for(const n of npcs){if(n.team!=='e'||n.hp<=0||(sysA>=1&&sysIn(n.x,n.y))||(RGH(r=>r.sumA(n.x,n.y,M.s))||0)>=1)continue;const x=X(n.x),y=Y(n.y);g.fillStyle=n.boss?'#ff9a4f':'#ff4d4d';if(n.boss){g.fillRect(x-5,y-5,10,10);g.strokeStyle='#ff9a4f';g.lineWidth=1.5;g.strokeRect(x-9,y-9,18,18)}else{g.beginPath();g.arc(x,y,3,0,TAU);g.fill()}}
   txt('● Enemigos',16,58,'#ff6b6b','left',10);
   if(!sczDead()&&!(sysA>=1&&sysIn(SCZ.x,SCZ.y))){const x=X(SCZ.x),y=Y(SCZ.y);g.strokeStyle='#d9b86a';g.fillStyle='#2a2418';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y-6);g.lineTo(x+6,y);g.lineTo(x,y+6);g.lineTo(x-6,y);g.closePath();g.fill();g.stroke();txt(SCZ.n,x,y-12,'#d9b86a','center',10);txt('♻ CHATARRA · limitada',x,y+18,'#b99a56','center',9)}
   qMap(X,Y);const sx=X(ship.x),sy=Y(ship.y),gl=g.createRadialGradient(sx,sy,0,sx,sy,20);gl.addColorStop(0,'rgba(255,255,255,.55)');gl.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gl;g.fillRect(sx-20,sy-20,40,40);
