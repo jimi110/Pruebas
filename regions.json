@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "comment": "Registro ligero de regiones. Para añadir una: crea region-expansion-XX.json en la raíz y añade aquí una línea (id, idx único, file, forma y tamaño). 'v' sube cuando cambias el contenido del JSON (sirve para detectar versiones distintas en multijugador).",
+  "comment": "Registro ligero de regiones. Para añadir una: crea region-expansion-XX.json en la raíz y añade aquí una línea (id, idx único, file, forma y tamaño). 'enabled': false desactiva una región sin borrarla (no se carga ni se dibuja; su progreso guardado se conserva). 'v' sube cuando cambias el contenido del JSON (sirve para detectar versiones distintas en multijugador).",
   "regions": [
     { "id": "origin",    "idx": 0, "name": "Sistema Alfa (región original)", "builtin": true, "shape": "circle", "x": 0, "y": 0, "r": 72000, "density": 0.5, "color": "79,209,255", "v": 1 },
     { "id": "region-01", "idx": 1, "name": "Nebulosa Zafiro",   "file": "region-expansion-01.json", "shape": "blob",    "x": 112000,  "y": -10000, "w": 72000,  "h": 72000,  "density": 0.6,  "color": "110,170,255", "v": 3 },
-    { "id": "region-02", "idx": 2, "name": "Cúmulo Esquirla",   "file": "region-expansion-02.json", "shape": "ellipse", "x": -5000,   "y": -112000,"w": 72000,  "h": 72000,  "density": 1.0,  "color": "255,150,90",  "v": 2 },
-    { "id": "region-03", "idx": 3, "name": "Vacío de Merope",   "file": "region-expansion-03.json", "shape": "rect",    "x": -190000, "y": 90000,  "w": 150000, "h": 110000, "density": 0.08, "color": "190,130,255", "v": 1 },
-    { "id": "region-04", "idx": 4, "name": "Corredor del Remanso","file": "region-expansion-04.json","shape": "rect",   "x": 70000,   "y": 125000, "w": 46000,  "h": 14000,  "density": 0.35, "color": "120,255,170", "v": 1 }
+    { "id": "region-02", "enabled": false, "idx": 2, "name": "Cúmulo Esquirla",   "file": "region-expansion-02.json", "shape": "ellipse", "x": -5000,   "y": -112000,"w": 72000,  "h": 72000,  "density": 1.0,  "color": "255,150,90",  "v": 2 },
+    { "id": "region-03", "enabled": false, "idx": 3, "name": "Vacío de Merope",   "file": "region-expansion-03.json", "shape": "rect",    "x": -190000, "y": 90000,  "w": 150000, "h": 110000, "density": 0.08, "color": "190,130,255", "v": 1 },
+    { "id": "region-04", "enabled": false, "idx": 4, "name": "Corredor del Remanso","file": "region-expansion-04.json","shape": "rect",   "x": 70000,   "y": 125000, "w": 46000,  "h": 14000,  "density": 0.35, "color": "120,255,170", "v": 1 }
   ]
 }
