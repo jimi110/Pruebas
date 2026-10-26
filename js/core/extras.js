@@ -38,7 +38,7 @@ const cxSvg=(sh,col,lk,w)=>`<canvas class="cxc" data-sh="${sh}" data-col="${col}
 function cxPaint(){document.querySelectorAll('canvas.cxc').forEach(c=>{const w=+c.dataset.w,h=Math.round(w*1.1),k=2;c.width=w*k;c.height=h*k;const x=c.getContext('2d');x.scale(k,k);const lk=c.dataset.lk==='1';
   withCtx(x,()=>{drawS(w/2,h/2,-Math.PI/2,c.dataset.sh,lk?'#34495f':c.dataset.col,w/60,{h:1,th:lk?0:.5});if(lk){x.globalCompositeOperation='source-atop';x.fillStyle='rgba(7,13,22,.92)';x.fillRect(0,0,w,h)}})})}
 function cxRender(){cxRender0();cxPaint()}
-function cxDef(){if(!CXD.ga)CXD.ga={o:Object.keys(CXD).length+1,k:1}}
+function cxDef(){if(CFG.cre)for(const k in CXT)if(!CXD[k])CXD[k]={o:Object.keys(CXD).length+1,k:1};if(!CXD.ga)CXD.ga={o:Object.keys(CXD).length+1,k:1}}
 function cxRender0(){cxDef();const ks=Object.keys(CXT),f=ks.filter(k=>CXD[k]).length,b=$('cxBody');$('cxC').textContent=f+'/'+ks.length+' registradas';
  if(cxSel&&CXD[cxSel]){const t=CXT[cxSel],i=cxInfo(cxSel),d=CXD[cxSel];
   b.innerHTML=`<div class="cxd">${cxSvg(t.sh,t.col,0,110)}<div><div class="cxn" style="color:${t.col}">${t.n}</div><div class="cxcl">${t.cl} · Registro Nº ${d.o} · ${cxSel==='mer'?'encuentros':(cxSel==='ga'||cxSel==='go')?'avistamientos':'destruidas'}: ${d.k}</div><div class="cxth">Amenaza ${'★'.repeat(i.thr)}${'☆'.repeat(5-i.thr)}</div></div></div><p>${t.d}</p>`+i.rows.map(r=>`<div class="cxr"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')+`<div class="cxh">Comportamiento</div><ul>${i.beh.map(x=>'<li>'+x+'</li>').join('')}</ul><div class="cxh">Zonas</div><p>${i.zn.join(' · ')}</p>`;$('cxB').textContent='‹ Lista'}
