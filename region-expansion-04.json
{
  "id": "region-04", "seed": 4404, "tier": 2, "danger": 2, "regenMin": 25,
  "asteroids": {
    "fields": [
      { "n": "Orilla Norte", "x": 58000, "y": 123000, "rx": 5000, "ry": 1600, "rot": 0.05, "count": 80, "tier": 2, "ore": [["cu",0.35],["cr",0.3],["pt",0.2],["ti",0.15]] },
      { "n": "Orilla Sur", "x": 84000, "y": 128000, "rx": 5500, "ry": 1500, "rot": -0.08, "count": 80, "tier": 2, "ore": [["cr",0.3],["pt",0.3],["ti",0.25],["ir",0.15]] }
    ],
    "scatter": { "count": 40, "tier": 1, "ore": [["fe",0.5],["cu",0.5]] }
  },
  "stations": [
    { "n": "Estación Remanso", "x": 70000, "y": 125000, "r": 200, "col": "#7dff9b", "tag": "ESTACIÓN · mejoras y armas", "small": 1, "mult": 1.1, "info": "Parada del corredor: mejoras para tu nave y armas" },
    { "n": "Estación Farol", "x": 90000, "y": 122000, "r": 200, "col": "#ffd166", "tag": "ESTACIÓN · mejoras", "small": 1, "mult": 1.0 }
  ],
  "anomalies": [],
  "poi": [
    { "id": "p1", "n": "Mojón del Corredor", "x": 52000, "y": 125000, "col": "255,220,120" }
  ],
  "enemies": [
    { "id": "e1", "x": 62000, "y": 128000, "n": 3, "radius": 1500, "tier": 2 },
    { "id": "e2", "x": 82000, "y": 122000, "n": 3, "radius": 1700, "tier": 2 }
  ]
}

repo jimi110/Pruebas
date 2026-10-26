@@ -1,0 +1,25 @@
+{
+  "id": "region-03", "seed": 3303, "tier": 1, "danger": 1, "regenMin": 0,
+  "asteroids": {
+    "fields": [
+      { "n": "Islote perdido", "x": -230000, "y": 60000, "rx": 3500, "ry": 2500, "rot": 1.1, "count": 300, "tier": 1, "ore": [["fe",0.3],["cu",0.3],["cr",0.2],["pt",0.2]] },
+      { "n": "Arco de Merope", "x": -160000, "y": 120000, "rx": 9000, "ry": 2500, "rot": -0.3, "count": 600, "tier": 2, "ore": [["cr",0.3],["pt",0.3],["ti",0.25],["ir",0.15]] }
+    ],
+    "scatter": { "count": 400, "tier": 1, "ore": [["fe",0.3],["cu",0.3],["cr",0.2],["pt",0.1],["ti",0.1]] }
+  },
+  "stations": [
+    { "n": "Estación Merope", "x": -190000, "y": 90000, "r": 200, "col": "#7dff9b", "tag": "ESTACIÓN · mejoras · aislada", "small": 1, "mult": 1.5, "info": "Puesto remoto en el Vacío de Merope: mejoras y reabastecimiento aislado" }
+  ],
+  "anomalies": [
+    { "id": "a1", "t": "e", "n": "Remolino silencioso", "x": -150000, "y": 70000, "r": 3000, "col": "190,130,255" }
+  ],
+  "poi": [
+    { "id": "p1", "n": "Boya de socorro", "x": -215000, "y": 120000, "col": "255,220,120" },
+    { "id": "p2", "n": "Casco a la deriva", "x": -120000, "y": 60000, "col": "255,200,100" }
+  ],
+  "enemies": [
+    { "id": "e1", "x": -170000, "y": 118000, "n": 2, "radius": 1600, "tier": 2 },
+    { "id": "e2", "x": -210000, "y": 90000, "n": 3, "radius": 1800, "tier": 2 }
+  ]
+}
+
