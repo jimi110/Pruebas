@@ -249,7 +249,7 @@ function pathShape(m,X,Y,s){g.beginPath();
   else if(m.shape==='blob'){for(let i=0;i<=120;i++){const t=i/120*TAU,k=bk(m,t),x=X(m.x+Math.cos(t)*k*m.w/2),y=Y(m.y+Math.sin(t)*k*m.h/2);i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()}
   else g.rect(X(m.x-m.w/2),Y(m.y-m.h/2),m.w*s,m.h*s)}
 /* Factor de 'resumen' (0 = detalle · 1 = zona resumida) igual que Sistema Alfa: usa SYSZ0/SYSZ1 de ui.js */
-const sumF=s=>{const z0=typeof SYSZ0==='number'?SYSZ0:.0075,z1=typeof SYSZ1==='number'?SYSZ1:.0105,t=cl((z1-s)/(z1-z0),0,1);return t*t*(3-2*t)};
+const sumF=s=>{const z0=typeof SYSZ0==='number'?SYSZ0:.0075,z1=typeof SYSZ1==='number'?SYSZ1:.0105,t=cl((z1-s)/(z1-z0),0,1);return t};   // lineal, igual que sysA de Alfa
 function regAt(x,y){let b=null;for(const R of LIST)if(!R.m.builtin&&inside(R.m,x,y)&&(!b||area(R.m)<area(b.m)))b=R;return b}
 function sumA(x,y,s){return regAt(x,y)?sumF(s):0}       // 0..1: cuánto está resumida la región que contiene (x,y)
 function sumName(x,y,s){const R=s<(typeof SYSZ0==='number'?SYSZ0:.0075)?regAt(x,y):null;return R?R.m.name:null}
@@ -261,12 +261,10 @@ function drawMap(X,Y,M){
     const px=Math.max(sx1-sx0,sy1-sy0),c=m.color;
     if(!m.builtin){
       /* igual que Sistema Alfa: lejos = zona resumida (fondo oscuro, borde marcado, solo el nombre); al acercar el zoom se funde y aparece el detalle */
-      const f=sumF(s);
-      pathShape(m,X,Y,s);g.fillStyle='rgba('+c+','+(.04+Math.min(.1,m.density*.08))*(1-f)+')';g.fill();
-      if(f>0){g.save();g.globalAlpha=f;pathShape(m,X,Y,s);g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba('+c+',.13)';g.fill();g.restore()}
-      g.setLineDash([]);g.lineJoin='round';
-      for(const[lw,al]of[[14,.035],[8,.06],[4,.1]]){pathShape(m,X,Y,s);g.lineWidth=lw;g.strokeStyle='rgba('+c+','+(al*(.35+.65*f))+')';g.stroke()}   // halo suave
-      g.setLineDash([10,7]);g.lineWidth=1.5+.5*f;g.strokeStyle='rgba('+c+','+(.55*(.55+.45*f))+')';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);
+      const f=sumF(s);   // como Sistema Alfa: al acercar el zoom no se dibuja nada (ni relleno ni borde); solo al alejar aparece la zona resumida
+      if(f>0){g.save();g.globalAlpha=f;g.lineJoin='round';
+        pathShape(m,X,Y,s);g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba('+c+',.13)';g.fill();
+        g.setLineDash([10,6]);g.lineWidth=2;g.strokeStyle='rgba('+c+',.85)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);g.restore()}
     }else{g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([])}
     if(!m.builtin&&px>140&&R.st!=='ready')R.want=clock;                       // el mapa pide el detalle cuando se acerca el zoom
     const fs=m.builtin?0:sumF(s);                                             // factor de resumen (igual que Alfa)
