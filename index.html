@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>StarLuge</title>
+<style>
+:root{color-scheme:dark;--bg:#05070d;--fg:#cfe8ff;--ac:#4fd1ff;--bd:rgba(120,200,255,.5)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font:12px ui-monospace,Menlo,monospace}
+canvas{display:block;width:100%;height:100%}
+#ui{position:fixed;inset:0;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box}
+.sq{pointer-events:auto;position:absolute;background:rgba(8,20,36,.88);border:1px solid var(--bd);border-radius:0;color:var(--fg);font:600 12px ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;padding:12px 16px;cursor:pointer}
+.sq{transition:transform .12s}.sq:hover,.sq:active{background:rgba(79,209,255,.3)}.sq:hover{transform:scale(1.07)}.card{transition:transform .12s}.card:hover{transform:scale(1.04)}
+.sq.go{border-color:#7dff9b;color:#7dff9b}
+.hide{display:none!important}
+#wP{pointer-events:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,94%);max-height:88%;overflow:auto;padding:14px 16px;background:rgba(5,12,22,.97);border:1px solid var(--bd);border-top:4px solid #7dff9b;box-sizing:border-box;z-index:30;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}#wP .fti{display:flex;justify-content:space-between;align-items:center;font-size:15px;letter-spacing:.14em;color:#7dff9b;font-weight:700;margin-bottom:10px}#wP .fcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}#wP .fcd{border:1px solid;background:rgba(10,22,38,.8);padding:8px 10px}#wP .fh2{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:5px}#wP .fh2 span{opacity:.75;font-size:11px}#wP .fbr i{display:block;height:6px;background:#1a2a40;margin:2px 0}#wP .fbr i b{display:block;height:100%}#wP .fbt{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#wP .fti .sq,#wP .fbt .sq{position:static;flex:1 1 auto;padding:8px 10px;font-size:11px;min-height:0;width:auto;text-align:center}#wP .fbt .sq.on{background:rgba(125,255,176,.22);border-color:#7dff9b;color:#7dff9b}#wP .fbt .sq[disabled]{opacity:.35;pointer-events:none}#wP .fm2{display:flex;flex-direction:column;align-items:center;gap:2px}#wP .fl2{margin:12px 0 2px;font-size:11px;letter-spacing:.16em;opacity:.65;text-transform:uppercase}
+#bMap{right:14px;bottom:14px}#bTg{right:14px;bottom:158px}#bHan{right:14px;bottom:62px}#bShip{right:14px;bottom:110px}#shipP{pointer-events:auto;position:absolute;left:0;right:0;bottom:0;padding:10px 14px;background:rgba(5,12,22,.92);border-top:1px solid var(--bd);box-sizing:border-box;max-height:46%;overflow:auto}.pr{display:flex;align-items:center;gap:8px;margin:4px 0}.pr span{width:70px}.pr i{flex:1;height:6px;background:#12263a}.pr b{display:block;height:100%}.pr .sq{position:static;padding:6px 10px;font-size:10px;min-width:130px}
+#panel,#hangar{pointer-events:auto;position:absolute;left:0;right:0;bottom:0;padding:10px 14px;background:rgba(5,12,22,.92);border-top:1px solid var(--bd);box-sizing:border-box}
+#panel{display:flex;gap:10px;align-items:center;flex-wrap:wrap;left:auto;right:14px;bottom:62px;padding:0;background:none;border:0}
+#info{flex:1;min-width:180px;line-height:1.5}
+#panel .sq,#hangar .sq{position:static}
+#cards{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px}
+.card{flex:0 0 150px;border:1px solid var(--bd);padding:8px;cursor:pointer;background:rgba(10,24,40,.7)}
+.card.sel{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.card h3{margin:0;font-size:13px;color:var(--c);letter-spacing:.1em;text-transform:uppercase}
+.card p{margin:2px 0 6px;opacity:.7;font-size:10px}
+.st{display:flex;align-items:center;gap:6px;font-size:9px;margin:2px 0}
+.st span{width:44px;opacity:.7}.st i{flex:1;height:4px;background:#12263a}.st b{display:block;height:100%;background:var(--c)}
+#modes{pointer-events:auto;position:absolute;left:14px;bottom:14px;display:flex;flex-direction:column;gap:6px}
+#modes .sq{position:static;padding:9px 12px;font-size:11px;opacity:.55;border-color:#58708a;text-align:left}
+#modes .sq.on{opacity:1;color:var(--c);border-color:var(--c);background:rgba(10,30,50,.9)}
+#shipP{top:0;left:auto;width:min(390px,52%);max-height:none;border-top:0;border-left:1px solid var(--bd);padding:12px 14px}
+@media(max-width:720px) and (max-aspect-ratio:4/3){#shipP{top:auto;left:0;width:100%;max-height:52%;border-left:0;border-top:1px solid var(--bd)}}
+.bb{height:8px;background:#12263a;margin:4px 0;border:1px solid rgba(120,200,255,.3)}.bb b{display:block;height:100%}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.sq{font-size:14px;padding:14px 18px}#modes .sq{font-size:13px;padding:11px 14px}
+#bMap{bottom:14px}#bHan{bottom:72px}#bShip{bottom:130px}#bTg{bottom:188px}#bInv{right:14px;bottom:246px}#bEsc{right:14px;bottom:304px}#info{font-size:14px;line-height:1.5}#shipP{font-size:14px}
+#bFire{left:14px;bottom:150px;background:rgba(80,20,20,.9);border-color:#ff6b6b;color:#ff9a9a}
+.card2{background:rgba(10,24,40,.75);border:1px solid rgba(120,200,255,.3);padding:10px 12px;margin:10px 0;line-height:1.55}.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid rgba(120,200,255,.12)}
+.tabs{display:flex;gap:6px;margin-top:10px}.tabs .sq{flex:1;position:static;text-align:center;padding:10px}.tabs .on{background:rgba(79,209,255,.3);border-color:#4fd1ff}
+#menu{pointer-events:auto;position:absolute;inset:0;display:flex;align-items:center;padding:0 8vw;box-sizing:border-box;background:linear-gradient(90deg,rgba(2,5,12,.9) 0%,rgba(2,5,12,.6) 42%,rgba(2,5,12,0) 78%)}
+#menu .box,#pause .pb,#codex .cb{zoom:1.5}#menu .box{width:min(340px,100%)}#menu h1{margin:0;font:700 34px ui-monospace,Menlo,monospace;letter-spacing:.14em;white-space:nowrap;color:#e6f4ff;text-shadow:0 0 24px rgba(79,209,255,.55)}#menu h1 span{color:var(--ac)}
+#menu .sub{opacity:.6;letter-spacing:.2em;font-size:11px;text-transform:uppercase;margin:6px 0 28px}
+#menu .sq{position:static;display:block;width:100%;margin:0 0 10px;text-align:left}#menu .sq.dng{border-color:#ff6b6b;color:#ff9a9a}
+#menu .hint{opacity:.55;font-size:12px;line-height:1.5;margin:-14px 0 18px}#menu label{display:block;margin:14px 0 4px;letter-spacing:.1em;font-size:12px;text-transform:uppercase}#menu input[type=range]{width:100%;accent-color:#4fd1ff}
+#zinfo{position:fixed;pointer-events:none;width:250px;background:rgba(5,12,22,.95);border:1px solid var(--bd);padding:10px 12px;font-size:13px;line-height:1.5}
+#zinfo b.t{color:var(--ac);letter-spacing:.08em;text-transform:uppercase}#zinfo .r{display:flex;align-items:center;gap:6px;margin:3px 0}#zinfo i{width:10px;height:10px;display:inline-block}
+
+/* ===== FASE 1: zonas seguras, horizontal, HUD compacto, doble toque ===== */
+#ui{inset:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);padding:0}
+canvas{touch-action:none;-webkit-touch-callout:none}
+#rot{position:fixed;inset:0;z-index:99;background:rgba(3,6,12,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;box-sizing:border-box;line-height:1.5;font-size:15px}
+#rot .ph{width:46px;height:78px;border:3px solid var(--ac);border-radius:9px;animation:rotp 2.2s ease-in-out infinite}
+@keyframes rotp{0%,25%{transform:rotate(0)}65%,100%{transform:rotate(-90deg)}}
+#rot .sq{position:static;opacity:.8}
+.rip{position:fixed;width:14px;height:14px;margin:-7px 0 0 -7px;border:2px solid #7dff9b;border-radius:50%;pointer-events:none;z-index:50;animation:rip .55s ease-out forwards}
+@keyframes rip{to{transform:scale(5);opacity:0}}
+@media (max-height:520px){.dh b{font-size:14px!important}.dh .fn,.fx{font-size:12px}.card2{padding:8px 10px;margin:6px 0}.icons .sq{height:38px}.res{margin:4px 0}
+#bMap,#bHan,#bShip,#bTg,#bInv,#bEsc{width:136px;min-height:40px;box-sizing:border-box;text-align:center;padding:9px 4px;font-size:11px;letter-spacing:.06em;white-space:nowrap}
+#bMap{right:14px;bottom:10px}#bHan{right:14px;bottom:56px}#bShip{right:14px;bottom:102px}
+#bTg{right:158px;bottom:10px}#bInv{right:158px;bottom:56px}#bEsc{right:158px;bottom:102px}
+#bFire{left:auto;right:302px;bottom:10px;width:96px;min-height:56px;padding:9px 4px;text-align:center}
+#modes{bottom:10px;gap:4px}#modes .sq{font-size:11px;padding:7px 10px;min-height:36px}
+#panel{right:158px;bottom:10px}#info{font-size:12px;min-width:140px}
+#hangar{display:flex;flex-wrap:wrap;gap:6px;padding:6px 14px}.card{flex-basis:128px;padding:5px 8px}.card p{display:none}.card h3{font-size:12px}.st{margin:1px 0}#hangar #cards{flex:1 1 100%;padding-bottom:2px}#hangar .sq{width:calc(50% - 3px)!important;margin:0!important;padding:9px;box-sizing:border-box}
+#menu{overflow-y:auto;align-items:safe center}#menu h1{font-size:26px}#menu .sub{margin:4px 0 12px}#menu .sq{padding:9px 14px;margin-bottom:6px}#menu .hint{margin:-6px 0 10px}
+}
+
+.sh1{display:flex;justify-content:space-between;align-items:center}.res{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.loc{margin-left:auto;opacity:.75;font-size:12px}
+.cc{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid rgba(120,200,255,.3);background:rgba(10,24,40,.7);font-size:14px}.cc svg,.ico{flex:none;vertical-align:middle}
+.icons{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0}.icons .sq{position:static;padding:0;height:44px;display:flex;align-items:center;justify-content:center;transition:none}.icons .sq:hover{transform:none}.icons .sq.on{background:rgba(79,209,255,.28)}
+.dh{display:flex;gap:10px;align-items:flex-start}.dh .fn{opacity:.75;font-size:13px;line-height:1.4;margin-top:2px}.badge{border:1px solid;padding:2px 7px;font-size:11px;letter-spacing:.08em;white-space:nowrap}
+.fx{margin-top:6px;font-size:13px;line-height:1.4}.dim{opacity:.7}.cost{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0}
+.sq:disabled{opacity:.38;cursor:default}.sq:disabled:hover{transform:none;background:rgba(8,20,36,.88)}
+
+/* ===== FASE 3: misiones ===== */
+#qp{position:absolute;left:14px;top:150px;width:min(250px,44%);pointer-events:auto;background:rgba(5,12,22,.84);border:1px solid var(--bd);border-left:4px solid var(--qc,#8a97a8);overflow:auto;box-sizing:border-box;font-size:12px;line-height:1.35}
+.qh{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;cursor:pointer;font-weight:700;letter-spacing:.08em;font-size:11px;min-height:18px}
+#cxN{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,92%);max-height:84%;overflow:auto;pointer-events:auto;background:rgba(5,12,22,.97);border:1px solid #4fd1ff;border-top:4px solid var(--c,#4fd1ff);padding:12px 14px;box-sizing:border-box;line-height:1.5;z-index:20}#cxN .h{font-size:11px;letter-spacing:.14em;color:#4fd1ff}#cxN .n{font:700 18px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;margin:2px 0}#cxN p{font-size:12.5px;margin:6px 0}
+.qt{font-size:10.5px;line-height:1.35;opacity:.88;margin-top:5px;padding:4px 6px;background:rgba(255,216,77,.08);border-left:2px solid #ffd84d;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}.qtp{font-size:12px;line-height:1.5;margin:6px 0 10px;padding:8px 10px;background:rgba(255,216,77,.09);border-left:3px solid #ffd84d}
+.qb{opacity:.8;font-weight:600;letter-spacing:.04em;font-size:10px}
+.qg{padding:6px 10px 2px;font-size:10px;font-weight:700;letter-spacing:.14em;border-top:1px solid rgba(120,200,255,.15)}
+.qi{padding:6px 10px 7px 10px;margin:0 0 2px;border-left:3px solid var(--c);cursor:pointer;background:rgba(10,24,40,.55)}.qi.dim{opacity:.7}.qi:active{background:rgba(79,209,255,.2)}
+.qn{font-weight:700;color:var(--c)}.qd2{opacity:.75;font-size:11px;margin:2px 0}.qo{opacity:.92;margin-top:2px}.qr{font-size:11px;margin-top:3px;opacity:.9}
+#qd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,92%);max-height:84%;overflow:auto;pointer-events:auto;background:rgba(5,12,22,.97);border:1px solid var(--c);border-top:4px solid var(--c);padding:14px;font-size:14px;line-height:1.45;box-sizing:border-box}
+.qdh{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.1em;opacity:.95}.qbd{color:#05070d;padding:2px 8px;font-weight:700}
+.qdn{font-size:18px;font-weight:700;margin:8px 0 4px}.qdd{opacity:.8;margin-bottom:8px}.qo2{padding:8px 6px;border-bottom:1px solid rgba(120,200,255,.14)}.qo2.pick{cursor:pointer}.qo2.cur{background:rgba(255,255,255,.08)}
+.qdr{margin:10px 0;font-weight:600}.qdb2{display:flex;gap:8px;flex-wrap:wrap}.qdb2 .sq{flex:1;min-width:110px;padding:11px 10px;text-align:center}.sq.dng{border-color:#ff6b6b;color:#ff9a9a}
+@media (max-height:520px){#qp{font-size:11px}.qh{padding:6px 8px}.qi{padding:4px 8px 5px}#qd{font-size:13px;padding:10px}.qdn{font-size:16px;margin:4px 0}.qdb2 .sq{padding:8px}}
+</style><style>#evP,#gvP{pointer-events:auto;position:absolute;left:50%;transform:translateX(-50%);bottom:calc(130px + env(safe-area-inset-bottom));width:min(340px,86%);background:rgba(8,16,28,.94);border:1px solid #c792ff;padding:10px 12px;font:12px ui-monospace,Menlo,monospace;line-height:1.5;box-sizing:border-box}#evP .evh,#gvP .evh{color:#c792ff;letter-spacing:.1em;font-weight:700}#evP .evd,#gvP .evd{opacity:.8;font-size:11px;margin:2px 0}#evP .evr{display:flex;align-items:center;gap:8px;margin:5px 0}#evP .evn{width:96px;font-size:11px}#evP i{flex:0 0 46px;height:5px;background:#12263a}#evP b{display:block;height:100%}#evP .evs{flex:1;text-align:right;font-size:11px}#bPause{position:absolute;right:14px;bottom:10px;width:136px;min-height:40px;box-sizing:border-box;text-align:center;padding:9px 4px;font-size:11px;letter-spacing:.06em;white-space:nowrap}
+#pause,#codex{pointer-events:auto;position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(2,5,12,.74);backdrop-filter:blur(3px)}
+#pause .pb,#codex .cb{background:rgba(8,20,36,.95);border:1px solid var(--bd);box-shadow:0 0 44px rgba(79,209,255,.14);width:min(340px,100%);max-height:100%;overflow-y:auto;padding:16px 18px;box-sizing:border-box}#codex .cb{width:min(720px,100%)}
+#pause .pt{font:700 22px ui-monospace,Menlo,monospace;letter-spacing:.2em;color:#e6f4ff;display:flex;align-items:center;gap:10px}#pause .pt i{width:9px;height:9px;background:#ffd166;box-shadow:0 0 10px #ffd166;animation:pbl 1.2s ease-in-out infinite}@keyframes pbl{50%{opacity:.25}}
+#pause .ps{opacity:.6;letter-spacing:.18em;font-size:11px;text-transform:uppercase;margin:4px 0 16px}
+#pause .sq,#codex .cf .sq{position:static;display:block;width:100%;margin:0 0 8px;text-align:left}#pause .sq.dng{border-color:#ff6b6b;color:#ff9a9a}#pause label{display:block;margin:14px 0 4px;letter-spacing:.1em;font-size:12px;text-transform:uppercase}#pause input[type=range]{width:100%;accent-color:#4fd1ff}
+#codex .ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}#codex h2{margin:0;font:700 18px ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#e6f4ff}#cxC{opacity:.6;font-size:11px}
+#cxBody canvas.cxc,#cxN canvas.cxc{margin:0 auto}.cxd canvas.cxc{margin:0}#cxBody .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.cx{border:1px solid var(--bd);padding:10px 6px;text-align:center;cursor:pointer;background:rgba(10,24,40,.7)}.cx.lk{opacity:.55;border-style:dashed;cursor:default}.cx .nm{margin-top:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.cx .th{font-size:10px;opacity:.75;margin-top:2px}
+.cxd{display:flex;gap:14px;align-items:center;margin-bottom:8px}.cxn{font:700 18px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}.cxcl,.cxth{font-size:11px;opacity:.75;margin-top:3px}
+.cxr{display:flex;gap:10px;padding:6px 0;border-top:1px solid rgba(120,200,255,.15);font-size:12px}.cxr span{flex:0 0 100px;opacity:.65}.cxr b{font-weight:400}.cxh{margin:12px 0 4px;letter-spacing:.14em;font-size:11px;text-transform:uppercase;color:#4fd1ff}
+#cxBody ul{margin:0;padding-left:18px;font-size:12px;line-height:1.55}#cxBody p{font-size:12px;line-height:1.55;margin:4px 0}.cxf{opacity:.5;font-size:11px;margin-top:12px}#codex .cf{margin-top:10px}
+@media(max-height:520px){#pause .pb{width:min(560px,100%);padding:12px 14px}#pMain{display:grid;grid-template-columns:1fr 1fr;gap:8px}#pMain .sq{margin:0;padding:9px 12px}#pause .ps{margin:2px 0 10px}#pause .pt{font-size:18px}}
+</style><style>#mpw{pointer-events:auto;position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;background:rgba(2,5,12,.78);backdrop-filter:blur(3px)}#mpw.hide{display:none}
+#mpw .mpb{zoom:1.3;background:rgba(8,20,36,.97);border:1px solid var(--bd);box-shadow:0 0 44px rgba(79,209,255,.14);width:min(340px,100%);max-height:100%;overflow-y:auto;padding:16px 18px;box-sizing:border-box}
+#mpw .mpt{display:flex;justify-content:space-between;align-items:center;font:700 18px ui-monospace,Menlo,monospace;letter-spacing:.18em;color:#e6f4ff;margin-bottom:4px}
+#mpw .sq{position:static;display:block;width:100%}#mpw .mpt .sq{width:auto;padding:4px 10px}
+#mpw label{display:block;margin:14px 0 4px;letter-spacing:.1em;font-size:11px;text-transform:uppercase;opacity:.8}
+.mpin{user-select:text;-webkit-user-select:text;width:100%;box-sizing:border-box;background:#0a1626;border:1px solid var(--bd);color:var(--fg);padding:9px 10px;font:600 14px ui-monospace,Menlo,monospace;outline:none;border-radius:0}.mpin:focus{border-color:var(--ac)}.mpin:disabled{opacity:.6}
+#mpw .mpH{opacity:.65;font-size:11px;line-height:1.5;margin:6px 0 0}
+#mpw .mpC{display:flex;align-items:center;gap:10px;font:700 26px ui-monospace,Menlo,monospace;letter-spacing:.3em;color:#7dff9b}#mpw .mpC .sq{width:auto;padding:5px 10px;font-size:10px;letter-spacing:.1em;margin-left:auto}
+#mpL>div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(120,200,255,.15);font-size:12px}
+#mpw .mpg{display:flex;align-items:center;gap:8px;border:1px solid var(--bd);background:rgba(10,24,40,.7);padding:8px 10px;margin-top:6px}#mpw .mpgi{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}#mpw .mpgi b{font-size:12px;overflow-wrap:anywhere}#mpw .mpgi span{font-size:10px;opacity:.6}#mpw .mpgb{display:flex;gap:6px}#mpw .mpgb .sq{width:auto;padding:6px 9px;font-size:10px}#mpw .sq:disabled{opacity:.35;cursor:default}</style>
+</head><body>
+<canvas id="c"></canvas>
+<div id="sa" style="position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"></div>
+<div id="rot" class="hide"><div class="ph"></div><div><b>Gira tu dispositivo</b><br>StarLuge se juega en horizontal.</div><button class="sq" id="rotOk">Continuar así</button></div>
+<div id="ui">
+  <button class="sq hide" id="bMap">Mapa [M]</button>
+  <button class="sq hide" id="bHan">Hangar [H]</button>
+  <button class="sq hide" id="bShip">Nave [N]</button>
+  <button class="sq hide" id="bTg">Objetivo [T]</button><button class="sq hide" id="bEsc">Escolta [F]</button>
+  <div id="thr" class="hide" style="pointer-events:auto;position:absolute;right:14px;top:34%;display:flex;flex-direction:column;align-items:center;gap:6px;width:64px">
+    <div id="thrV" style="font-size:15px;font-weight:bold;text-align:center">100%</div>
+    <div id="thrL" style="position:relative;width:44px;height:170px;touch-action:none;cursor:ns-resize;background:rgba(8,16,28,.7);border:1px solid var(--bd)"><div style="position:absolute;left:50%;top:9px;bottom:9px;width:4px;margin-left:-2px;background:#12263a"></div><div id="thrM" style="position:absolute;left:3px;right:3px;height:0;border-top:1px dashed #ff9a4f"></div><div id="thrK" style="position:absolute;left:3px;right:3px;height:18px;background:#4fd1ff;border:1px solid #cfe8ff"></div></div>
+  </div>
+  <button class="sq hide" id="bFire">Disparar</button>
+  <button class="sq hide" id="bInv">Inventario [I]</button>
+  <div id="invP" class="hide" style="pointer-events:auto;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,92%);max-height:80%;overflow:auto;background:rgba(5,12,22,.96);border:1px solid var(--bd);padding:14px;font-size:14px;box-sizing:border-box"></div>
+  <style>
+#wTut{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(2,6,12,.74);pointer-events:auto;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+#wTut .tc{width:min(430px,94%);background:rgba(8,16,28,.97);border:1px solid #c792ff;padding:14px 16px;box-sizing:border-box;font:13px/1.5 ui-monospace,Menlo,monospace;color:#cfe8ff}
+#wTut .tc{max-height:calc(100% - 12px);overflow-y:auto}/* arreglo: en móviles apaisados el botón Siguiente quedaba fuera de pantalla y el tutorial (que pausa el juego) no se podía cerrar */
+#wTut .th{color:#c792ff;letter-spacing:.14em;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between}
+#wTut svg{width:100%;height:auto;display:block;margin:8px 0;background:rgba(3,8,16,.8);border:1px solid rgba(120,200,255,.25)}
+#wTut h3{margin:2px 0 4px;font-size:15px;color:#fff;letter-spacing:.06em}
+#wTut p{margin:0 0 8px;opacity:.85}
+#wTut .tb{display:flex;gap:8px;align-items:center;margin-top:6px}
+#wTut .tb .sq{position:static;flex:1;padding:10px 8px;font-size:12px}
+#wTut .dots{display:flex;gap:6px;justify-content:center;flex:0 0 auto}#wTut .dots i{width:7px;height:7px;background:#34506b}#wTut .dots i.on{background:#c792ff}
+#wTut .fm{transition:transform .8s cubic-bezier(.3,.8,.3,1)}
+@media (max-height:560px){#wTut .tc{padding:8px 12px;line-height:1.35}#wTut svg{height:56px;margin:4px 0}#wTut h3{margin:2px 0}#wTut p{margin:0 0 4px}#wTut .tb .sq{padding:6px 8px}}
+@keyframes wtb{0%,100%{opacity:.25}50%{opacity:1}}@keyframes wtd{to{stroke-dashoffset:-14}}@keyframes wtp{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+#ctx{z-index:300}#aInfo{position:absolute;top:0;right:0;bottom:0;width:min(390px,52%);padding:12px 14px;background:rgba(5,12,22,.92);border-left:1px solid var(--bd);box-sizing:border-box;overflow:auto;pointer-events:auto;font-size:14px}
+@media(max-width:720px) and (max-aspect-ratio:4/3){#aInfo{top:auto;left:0;width:100%;max-height:52%;border-left:0;border-top:1px solid var(--bd)}}
+
+#wTut{align-items:flex-end;padding-bottom:calc(env(safe-area-inset-bottom) + 6vh)}
+#wTut .tc{max-height:calc(100% - 14px);overflow:auto}
+@media (max-height:520px){#wTut{padding-bottom:calc(env(safe-area-inset-bottom) + 6px)}}
+/* menú flotante de órdenes: opaco y legible, por encima de la flota */
+#ctx{background:rgba(5,12,22,.99);border:1px solid var(--bd);padding:4px;box-shadow:0 8px 28px rgba(0,0,0,.7);min-width:200px}
+#ctx .sq{background:rgb(10,24,40)}#ctx .sq.dng{background:rgb(40,14,18)}#ctx .sq.dis{opacity:.45;border-color:#58708a}
+body.mp [data-w="h"]{display:none!important}
+</style><div id="wTut" class="hide"><div class="tc"><div class="th"><span>Nuevo · Escoltas</span><span id="wtN"></span></div><div id="wtV"></div><h3 id="wtT"></h3><p id="wtD"></p><div class="tb"><button class="sq" id="wtP">Atrás</button><div class="dots" id="wtDots"></div><button class="sq go" id="wtX">Siguiente</button></div></div></div>
+  <div id="modes" class="hide"></div><div id="wP" class="hide"></div>
+  <div id="cxN" class="hide"></div><div id="evP" class="hide"></div><div id="gvP" class="hide"></div><div id="qp" class="hide"></div><div id="qd" class="hide"></div>
+  <div id="panel" class="hide"><div id="info" class="hide"></div><button class="sq go hide" id="bGo">Confirmar</button><button class="sq hide" id="bCr">Rumbo normal</button><button class="sq" id="bCen">Centrar nave</button><button class="sq hide" id="bX">Cerrar</button></div>
+  <div id="shipP" class="hide"></div>
+  <div id="zinfo" class="hide"></div>
+  <div id="menu" class="hide"><div class="box"><h1>STAR<span>LUGE</span></h1><div class="sub">Explora · extrae · sobrevive</div>
+    <div id="mMain"><div class="hint hide" id="mHint">Partida guardada: continuarás donde la dejaste.</div><button class="sq go" id="mPlay">Supervivencia</button><button class="sq" id="mCx">Codex de naves</button><button class="sq" id="mMP">Multijugador</button><button class="sq" id="mSet">Ajustes</button><button class="sq" id="mCre"></button><button class="sq dng" id="mDel">Borrar progreso</button></div>
+    <div id="mCfg" class="hide"><label>Volumen <span id="vV"></span></label><input type="range" id="rV" min="0" max="100"><label>Brillo del universo <span id="vB"></span></label><input type="range" id="rB" min="0" max="200"><label>Tamaño de la interfaz <span id="vU"></span></label><input type="range" id="rU" min="80" max="200" step="5"><div style="height:18px"></div><button class="sq" id="mBack">Volver</button></div>
+    <div id="mAsk" class="hide"><div style="margin:0 0 14px;line-height:1.5">¿Borrar todo el progreso? Se perderán naves, mejoras y créditos, y el mundo se generará de nuevo.</div><button class="sq dng" id="mYes">Sí, borrar todo</button><button class="sq" id="mNo">Cancelar</button></div>
+  </div></div>
+  <div id="ctx" class="hide" style="position:fixed;pointer-events:auto;display:flex;flex-direction:column;gap:4px"></div>
+  <div id="pause" class="hide"><div class="pb"><div class="pt"><i></i>PAUSA</div><div class="ps">Partida en pausa</div>
+    <div id="pMain"><button class="sq go" id="pC">Continuar</button><button class="sq" id="pN">Nave [N]</button><button class="sq" id="pM">Mapa [M]</button><button class="sq" id="pQ">Misiones [Q]</button><button class="sq" id="pI">Inventario [I]</button><button class="sq" id="pX">Codex de naves</button><button class="sq hide" id="pInv">Invencible: SÍ</button><button class="sq hide" id="pIE">Energía infinita: SÍ</button><button class="sq" id="pMP">Multijugador</button><button class="sq" id="pO">Opciones</button><button class="sq dng" id="pE">Salir al menú principal</button></div>
+    <div id="pCfg" class="hide"><label>Volumen <span id="pvV"></span></label><input type="range" id="prV" min="0" max="100"><label>Brillo del universo <span id="pvB"></span></label><input type="range" id="prB" min="0" max="200"><label>Tamaño de la interfaz <span id="pvU"></span></label><input type="range" id="prU" min="80" max="200" step="5"><button class="sq" id="pBk" style="margin-top:16px">Volver</button></div></div></div>
+  <div id="codex" class="hide"><div class="cb"><div class="ch"><h2>CODEX DE NAVES</h2><span id="cxC"></span></div><div id="cxBody"></div><div class="cxf">Las entradas bloqueadas se registran al destruir ese tipo de nave por primera vez.</div><div class="cf"><button class="sq" id="cxB">‹ Volver</button></div></div></div>
+  <div id="mpw" class="hide"><div class="mpb"><div class="mpt"><span>MULTIJUGADOR</span><button class="sq" data-a="x">✕</button></div><div id="mpBody"></div></div></div>
+  <button class="sq hide" id="bPause">☰ Pausa [Esc]</button>
+  <div id="hangar"><div id="cards"></div><button class="sq" id="bHS" style="width:100%;margin-bottom:6px">Nave / Reparar</button><button class="sq go" id="bFly" style="width:100%">Despegar</button><button class="sq hide" id="bRst"></button></div>
+</div>
+<script src="js/core/game.js"></script>
+<script src="js/core/world.js"></script>
+<script src="js/systems/ships.js"></script>
+<script src="js/core/ui.js"></script>
+<script src="js/core/save.js"></script>
+<script src="js/core/combat.js"></script>
+<script src="js/core/mp-sync.js"></script>
+<script src="js/core/update.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/systems/missions.js"></script>
+<script src="js/systems/events.js"></script>
+<script src="js/systems/quests.js"></script>
+<script src="js/core/loop.js"></script>
+<script src="js/core/extras.js"></script>
+<script src="js/core/multiplayer.js"></script>
+<script src="js/core/main.js"></script>
+<script src="js/expansions/regions.js"></script>
+</body></html>
