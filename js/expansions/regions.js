@@ -241,6 +241,17 @@ function dockCheck(){if(!pendDock)return;const R=REG.get(pendDock.r),b=R&&R.stn.
   if(b&&!ship.docked&&state==='play'){ship.docked=b;pendDock=null;setState('hangar')}}
 
 /* ============================== MAPA GLOBAL ============================== */
+/* Borde natural de la región: asteroides repartidos en racimos y huecos a lo largo del límite (determinista por región), para saber cuándo entras o sales */
+function rim(R){if(R.rimP)return R.rimP;const m=R.m,rg=mul(h32(R.id+'#rim')),TP=Math.PI*2,ph=[rg()*TP,rg()*TP,rg()*TP],B=[],o=[],mx=Math.max(m.w||0,m.h||0,(m.r||0)*2)||1;
+  for(let i=0;i<360;i++){const t=i/360*TP,cs=Math.cos(t),sn=Math.sin(t);let lo=0,hi=mx;for(let k=0;k<18;k++){const md=(lo+hi)/2;if(inside(m,m.x+cs*md,m.y+sn*md))lo=md;else hi=md}B.push(lo)}
+  const rB=t=>{const f=((t%TP)+TP)%TP/TP*360,i=Math.floor(f)%360,u=f-Math.floor(f);return B[i]*(1-u)+B[(i+1)%360]*u},
+    dn=t=>Math.pow(Math.min(1,Math.max(0,.5+.5*(.6*Math.sin(4*t+ph[0])+.4*Math.sin(9*t+ph[1])+.3*Math.sin(17*t+ph[2])))),1.4)*.8+.2;
+  for(let g2=0;g2<20000&&o.length<850;g2++){const t=rg()*TP;if(rg()>dn(t))continue;
+    const gs=Math.sqrt(-2*Math.log(Math.max(1e-6,rg())))*Math.cos(TP*rg()),r=rB(t)+gs*320,x=m.x+Math.cos(t)*r,y=m.y+Math.sin(t)*r,sz=12+rg()*rg()*42,pg=[];
+    for(let v=0;v<7;v++){const a=v/7*TP,k=.68+.5*rg();pg.push([Math.cos(a)*sz*k,Math.sin(a)*sz*k*.9])}o.push([x,y,sz,pg])}
+  return R.rimP=o}
+function rimWorld(){for(const R of LIST){if(R.m.builtin)continue;const o=rim(R);g.save();g.lineWidth=1.6/zoom;g.fillStyle='#1d222d';g.strokeStyle='#5d667a';
+    for(const q of o){if(!vis(q[0],q[1],70))continue;g.beginPath();q[3].forEach((p,i)=>i?g.lineTo(q[0]+p[0],q[1]+p[1]):g.moveTo(q[0]+p[0],q[1]+p[1]));g.closePath();g.fill();g.stroke()}g.restore()}}
 function spk(R){if(R.spk)return R.spk;const m=R.m,rg=mul(h32(R.id)),n=Math.round(10+m.density*50),[x0,y0,x1,y1]=ext(m),o=[];
   for(let i=0;i<n*4&&o.length<n;i++){const x=x0+rg()*(x1-x0),y=y0+rg()*(y1-y0);if(inside(m,x,y,-50))o.push([x,y])}return R.spk=o}
 function pathShape(m,X,Y,s){g.beginPath();
@@ -279,6 +290,7 @@ function drawMap(X,Y,M){
       if(s>.012){g.fillStyle='rgba('+c+',.9)';for(let i=0;i<R.ast.length;i++){const a=R.ast[i],x=X(a.x),y=Y(a.y);if(x>-3&&x<W+3&&y>-3&&y<H+3&&!R.dep.has(i))g.fillRect(x-1,y-1,2,2)}}
       g.globalAlpha=1
     }
+    if(!m.builtin&&fs<1){g.save();g.globalAlpha=(1-fs)*.85;g.fillStyle='#8b94a8';for(const q of rim(R)){const x=X(q[0]),y=Y(q[1]);if(x>-4&&x<W+4&&y>-4&&y<H+4){const d=q[2]>34?2.4:1.6;g.fillRect(x-d/2,y-d/2,d,d)}}g.restore()}
     // etiqueta
     if(fs>0&&px>40){g.save();g.globalAlpha=fs;const cx=Math.max(60,Math.min(W-60,(sx0+sx1)/2)),cy=Math.max(24,Math.min(H-16,(sy0+sy1)/2));
       txt(m.name.toUpperCase(),cx,cy-8,'rgba('+c+',.98)','center',18);txt('zona de expansión · se detalla al acercar el zoom',cx,cy+12,'rgba('+c+',.7)','center',10);g.restore()}
@@ -345,7 +357,7 @@ if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,sumA,sumName,minZoom,
+  update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,
   cleared:id=>!!EV(r=>r.cleared(id)),locked:()=>!!EV(r=>r.lockJump()),
   vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
