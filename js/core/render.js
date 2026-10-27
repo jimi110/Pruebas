@@ -53,7 +53,7 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
   const vx0=-M.ox/M.s,vx1=(W-M.ox)/M.s,vy0=-M.oy/M.s,vy1=(H-M.oy)/M.s;
   const zone=(b,r,c)=>{blobPath(X(b.x),Y(b.y),r*M.s,b.x*.0013+b.y*.0007);g.fillStyle=c[0];g.fill();g.strokeStyle=c[1].replace(/[\d.]+\)$/,'.22)');g.lineWidth=1;g.stroke()};
   zone(A,C.safeR,['rgba(79,209,255,.09)','rgba(79,209,255,.5)']);zone(B,1500,['rgba(255,90,70,.09)','rgba(255,110,90,.5)']);FIELDS.forEach(F=>{fPoly(F,X,Y);g.fillStyle='rgba('+F.col+',.1)';g.fill('evenodd');g.strokeStyle='rgba('+F.col+',.4)';g.lineWidth=1;g.stroke()});
-  if(typeof impMap==='function')try{impMap(X,Y,M.s)}catch(e){}RGH(r=>r.drawMap(X,Y,M));gevDraw(X,Y,M.s,1);
+  RGH(r=>r.drawMap(X,Y,M));gevDraw(X,Y,M.s,1);
   for(const o of ANOM){const x=X(o.x+o.jx),y=Y(o.y+o.jy);if(o.found||MAPALL){g.beginPath();g.arc(X(o.x),Y(o.y),Math.max(3,o.r0*M.s),0,TAU);g.fillStyle=`rgba(${o.col},.3)`;g.fill();txt(o.n,X(o.x),Y(o.y)-o.r0*M.s-3,`rgba(${o.col},.8)`,'center',8)}else{g.fillStyle='rgba(255,255,255,.6)';g.fillRect(x-2,y-2,4,4);txt('? posible anomalía',x+6,y+3,'rgba(255,255,255,.45)','left',8)}}
   g.fillStyle='rgba(190,200,220,.7)';for(const a of asts){if(a.rg&&(RGH(r=>r.sumA(a.x,a.y,M.s))||0)>=1)continue;g.fillRect(X(a.x)-1,Y(a.y)-1,2,2)}
   for(const c of cmts){const x=X(c.x),y=Y(c.y);g.fillStyle='rgba('+CK[c.k].c+',.95)';g.beginPath();g.arc(x,y,3.5,0,TAU);g.fill();g.strokeStyle='rgba('+CK[c.k].c+',.5)';g.lineWidth=2;g.beginPath();g.moveTo(x,y);g.lineTo(x-c.vx/Math.hypot(c.vx,c.vy)*18,y-c.vy/Math.hypot(c.vx,c.vy)*18);g.stroke();txt('☄ '+CK[c.k].n,x+7,y+3,'rgba('+CK[c.k].c+',.9)','left',9)}
@@ -84,7 +84,7 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
 let VX=0,VY=0,VRd=1e9;const vis=(x,y,r=0)=>Math.hypot(x-VX,y-VY)<VRd+r;
 function drawWorld(){VX=cam.x;VY=cam.y;VRd=Math.hypot(W,H)/zoom;g.fillStyle='#02040a';g.fillRect(0,0,W,H);stars();g.save();g.translate(VPx||W/2,VPy||H/2);g.rotate(VR);g.scale(zoom,zoom);g.translate(-cam.x,-cam.y);
   for(const b of BASES){if(!vis(b.x,b.y,b.r*2.2))continue;drawBase(b);txt(b.n.toUpperCase(),b.x,b.y-b.r*1.7,b.col,'center',Math.round(15/zoom))}
-  drawTrl();if(typeof impWorld==='function')try{impWorld()}catch(e){}drawScz();drawSczOld();if(zoom<.3){const u=1/zoom;for(const b of BASES){g.strokeStyle=b.col;g.lineWidth=2*u;g.beginPath();g.arc(b.x,b.y,10*u,0,TAU);g.stroke();txt(b.n,b.x,b.y-18*u,b.col,'center',12*u)}}
+  drawTrl();RGH(r=>r.rimWorld&&r.rimWorld());drawScz();drawSczOld();if(zoom<.3){const u=1/zoom;for(const b of BASES){g.strokeStyle=b.col;g.lineWidth=2*u;g.beginPath();g.arc(b.x,b.y,10*u,0,TAU);g.stroke();txt(b.n,b.x,b.y-18*u,b.col,'center',12*u)}}
   for(const o of ANOM){if(!vis(o.x,o.y,o.r+200))continue;const pu=.75+.25*Math.sin(time*2+o.x);
     if(o.t==='w'){drawS(o.x,o.y,time*.15,'c','#8a8f99',1.6,DEAD);drawS(o.x+30,o.y-26,2,'t','#666',1,DEAD);g.strokeStyle=`rgba(${o.col},${o.cd?.12:.45*pu})`;g.setLineDash([6,8]);g.beginPath();g.arc(o.x,o.y,110,0,TAU);g.stroke();g.setLineDash([])}
     else{const q=g.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r);q.addColorStop(0,`rgba(${o.col},${.28*pu})`);q.addColorStop(1,`rgba(${o.col},0)`);g.fillStyle=q;g.fillRect(o.x-o.r,o.y-o.r,o.r*2,o.r*2);

@@ -112,7 +112,7 @@ function upd(dt){hgTick(dt);if(state!=='menu'){qTick(dt);trlTick(dt);sczTick();i
   if(near&&!ship.dest&&Math.hypot(ship.vx,ship.vy)<60){if(ship.docked!==near)dockAt(near)}else if(!near||ship.dest)ship.docked=null;
   $('bHan').classList.toggle('hide',!ship.docked||state!=='play');
   // torreta automática
-  ship.cd-=dt;let tg=null,td=560;for(const n of npcs)if(n.team==='e'){const d=dist(n,ship);if(d<td){td=d;tg=n}}
+  ship.cd-=dt;let tg=null,td=560;for(const n of npcs)if(n.team==='e'||(n.boss&&n.evs&&n.hp>0)){const d=dist(n,ship);if(d<td){td=d;tg=n}}
   if(ship.lock&&(ship.lock.hp<=0||!npcs.includes(ship.lock)||dist(ship.lock,ship)>1500))ship.lock=ship.orbit=null;if(ship.lock&&dist(ship.lock,ship)<700)tg=ship.lock;
   if(T.sh==='e'&&T.wp==='laser')T.wp='cannon';LZ=T.wp==='laser'&&WOWN.laser;ship.heat=Math.max(0,(ship.heat||0)-30*dt);if(ship.ovh&&ship.heat<=25)ship.ovh=0;
   const mf=fireOn||fireTouch,aA=!mf&&tg&&T.md.includes('atk')&&!!mode.atk&&(ship.en>=1||CFG.ie);if(!mf&&tg&&T.md.includes('atk')&&mode.atk&&ship.en<1&&!CFG.ie&&warnT<=0){warnT=6;toast('Sin energía: el modo Ataque se pausa')}
