@@ -210,7 +210,7 @@ function stepFound(R,pl){
 /* ============================== BUCLE ============================== */
 function update(dt){
   if(!regOk||typeof state==='undefined'||state==='menu')return;
-  clock+=dt;
+  clock+=dt;try{rimHit()}catch(e){}
   if(hostHash!==null&&HASH&&!lock&&evSt!=='loading'&&hostHash!==fullHash())setLock('Esta sala usa otra versión de las regiones: el contenido de las expansiones se desactiva en tu partida');
   const pl=players(),ready=LIST.filter(r=>r.st==='ready');
   // 1) generación progresiva (un solo presupuesto de tiempo para todo)
@@ -246,12 +246,24 @@ function rim(R){if(R.rimP)return R.rimP;const m=R.m,rg=mul(h32(R.id+'#rim')),TP=
   for(let i=0;i<360;i++){const t=i/360*TP,cs=Math.cos(t),sn=Math.sin(t);let lo=0,hi=mx;for(let k=0;k<18;k++){const md=(lo+hi)/2;if(inside(m,m.x+cs*md,m.y+sn*md))lo=md;else hi=md}B.push(lo)}
   const rB=t=>{const f=((t%TP)+TP)%TP/TP*360,i=Math.floor(f)%360,u=f-Math.floor(f);return B[i]*(1-u)+B[(i+1)%360]*u},
     dn=t=>Math.pow(Math.min(1,Math.max(0,.5+.5*(.6*Math.sin(4*t+ph[0])+.4*Math.sin(9*t+ph[1])+.3*Math.sin(17*t+ph[2])))),1.4)*.8+.2;
-  for(let g2=0;g2<20000&&o.length<850;g2++){const t=rg()*TP;if(rg()>dn(t))continue;
-    const gs=Math.sqrt(-2*Math.log(Math.max(1e-6,rg())))*Math.cos(TP*rg()),r=rB(t)+gs*320,x=m.x+Math.cos(t)*r,y=m.y+Math.sin(t)*r,sz=12+rg()*rg()*42,pg=[];
-    for(let v=0;v<7;v++){const a=v/7*TP,k=.68+.5*rg();pg.push([Math.cos(a)*sz*k,Math.sin(a)*sz*k*.9])}o.push([x,y,sz,pg])}
+  /* asteroides decorativos del borde (no minables): [x,y,radio,—,rotación,forma]; se dibujan con drawAst() sin vetas de mineral. ~70 % más densos que antes */
+  for(let g2=0;g2<40000&&o.length<1450;g2++){const t=rg()*TP;if(rg()>dn(t))continue;
+    const gs=Math.sqrt(-2*Math.log(Math.max(1e-6,rg())))*Math.cos(TP*rg()),r=rB(t)+gs*380,x=m.x+Math.cos(t)*r,y=m.y+Math.sin(t)*r,sz=14+rg()*rg()*44,sh=[];
+    for(let v=0;v<9;v++)sh.push(.75+rg()*.4);o.push([x,y,sz,null,rg()*TP,sh])}
   return R.rimP=o}
-function rimWorld(){for(const R of LIST){if(R.m.builtin)continue;const o=rim(R);g.save();g.lineWidth=1.6/zoom;g.fillStyle='#1d222d';g.strokeStyle='#5d667a';
-    for(const q of o){if(!vis(q[0],q[1],70))continue;g.beginPath();q[3].forEach((p,i)=>i?g.lineTo(q[0]+p[0],q[1]+p[1]):g.moveTo(q[0]+p[0],q[1]+p[1]));g.closePath();g.fill();g.stroke()}g.restore()}}
+const RIMA={x:0,y:0,r:0,rot:0,sh:null,m:'',nm:1};
+function rimWorld(){for(const R of LIST){if(R.m.builtin)continue;const o=rim(R);
+    for(const q of o){if(!vis(q[0],q[1],q[2]*1.6+40))continue;RIMA.x=q[0];RIMA.y=q[1];RIMA.r=q[2];RIMA.rot=q[4];RIMA.sh=q[5];drawAst(RIMA)}}}
+/* choque con los asteroides del borde: igual que con los reales (rebote y daño) */
+function rimHit(){
+  if(state!=='play'||ship.docked||ship.dead>0||(typeof shSafe==='function'&&shSafe()))return;
+  if(EV(r=>r.towing&&r.towing()))return;
+  const sx=ship.x,sy=ship.y;
+  for(const R of LIST){if(R.m.builtin)continue;if(!inside(R.m,sx,sy,1800)||inside(R.m,sx,sy,-1800))continue;
+    for(const q of rim(R)){const dx=sx-q[0];if(dx>q[2]+60||dx<-q[2]-60)continue;const dy=sy-q[1];if(dy>q[2]+60||dy<-q[2]-60)continue;
+      const d=Math.hypot(dx,dy),Rr=q[2]+16;
+      if(d<Rr&&d>0){const nx=dx/d,ny=dy/d,vn=ship.vx*nx+ship.vy*ny;ship.x=q[0]+nx*Rr;ship.y=q[1]+ny*Rr;
+        if(vn<0){ship.vx-=1.5*vn*nx;ship.vy-=1.5*vn*ny;if(ship.cool<=0&&-vn>50){ship.cool=.6;ship.dest=null;hurt(-vn*.08,'⚠ Choque con asteroide: la nave recibe daño',Math.atan2(-ny,-nx));boom(ship.x-nx*16,ship.y-ny*16,8,'#ffb347')}}}}}}
 function spk(R){if(R.spk)return R.spk;const m=R.m,rg=mul(h32(R.id)),n=Math.round(10+m.density*50),[x0,y0,x1,y1]=ext(m),o=[];
   for(let i=0;i<n*4&&o.length<n;i++){const x=x0+rg()*(x1-x0),y=y0+rg()*(y1-y0);if(inside(m,x,y,-50))o.push([x,y])}return R.spk=o}
 function pathShape(m,X,Y,s){g.beginPath();
@@ -298,7 +310,7 @@ function drawMap(X,Y,M){
     if(fs<1&&((px>14&&!m.builtin)||(m.builtin&&px>40&&px<1500))){const lab=m.name.toUpperCase();txt(lab,Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly)),'rgba('+c+',.95)','center',px>300?13:px>60?10:8);
       if(px>150&&!m.builtin){const sub=R.st==='ready'?'':R.st==='loading'?'cargando…':R.st==='error'?'⚠ sin datos (reintentando)':'';if(sub||px>220)txt((km(m.w)+' × '+km(m.h))+(sub?' · '+sub:''),Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly))+13,'rgba('+c+',.6)','center',9)}}
   }
-  g.restore()}
+  EV(r=>r.drawMap&&r.drawMap(X,Y,M.s));g.restore()}
 function minZoom(){if(!LIST.length)return 0;let a=1e18,b=1e18,c=-1e18,d=-1e18;for(const R of LIST){const e=ext(R.m);a=Math.min(a,e[0]);b=Math.min(b,e[1]);c=Math.max(c,e[2]);d=Math.max(d,e[3])}
   const sp=Math.max(c-a,d-b)*1.1;return cl(Math.min(W,H)/sp,.0002,.004)}
 function onZoom(f){if(f>=1||!LIST.length)return;const mz=minZoom();if(zoom>mz*1.6)return;
@@ -357,7 +369,7 @@ if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,
+  update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,drawMini:(X,Y,s)=>EV(r=>r.drawMini&&r.drawMini(X,Y,s)),
   cleared:id=>!!EV(r=>r.cleared(id)),locked:()=>!!EV(r=>r.lockJump()),
   vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
