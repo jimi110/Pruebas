@@ -184,6 +184,7 @@ function wingUpd(dt){
   for(const w of wing){if(!w.own||w.hp<=0||w.jp||w.svc)continue;const hb=BASES.find(b=>safeB(b)&&dist(w,b)<b.r+250);
    if(hb&&time-(w.lh||-99)>4){if(w.hp<w.max)w.hp=Math.min(w.max,w.hp+w.max*.04*dt);if(w.smax&&(w.shd||0)<w.smax)w.shd=Math.min(w.smax,(w.shd||0)+w.smax*.06*dt)}}}
  for(const w of wing){w.cd-=dt;if(w.smax&&w.rg&&time-(w.lh||-99)>6)w.shd=Math.min(w.smax,(w.shd||0)+w.smax*.08*dt);if(w.jp){wjStep(w,dt);continue}
+  if(w.rgt)continue;   /* remolcada por la guardia de región: RGEV la mueve */
   if(w.st==='rescue'){if(w.tow&&ship.wreck)continue;const dx=ship.x-w.x,dy=ship.y-w.y,d=Math.hypot(dx,dy);{const v=Math.min(w.spd,d*1.2);if(d>50)wSteer(w,dx/d*v-w.vx*.35,dy/d*v-w.vy*.35,dt,2.6,w.spd);else{w.vx*=1-3*dt;w.vy*=1-3*dt;w.a+=angDiff(w.a,ship.a)*Math.min(1,3*dt)}}w.x+=w.vx*dt;w.y+=w.vy*dt;continue}
   if(w.st==='esc'&&w.esc){wEsc(w,dt);continue}
   const fl=w.st==='follow',an=fl?ship:(w.hb||(w.hb=nBase(w)));let tg=null,td=1e9;
