@@ -10,7 +10,7 @@ var MPCS=null;
 var MP={role:null,code:'',id:'',name:'',ch:null,sb:null,peers:{},pend:{},msg:'',busy:0,joined:0,hostGone:0,share:1},MPR={};
 if(MPG)document.body.classList.add('mp');
 try{const v=localStorage.getItem('starluge_mpshare');if(v!==null)MP.share=v==='1'?1:0}catch(e){}
-const NSK=['team','max','boss','role','om','evs','gv','evp','rad','dm','fr','agr','dl','slot','static'];
+const NSK=['team','max','boss','role','om','evs','gv','evp','rad','dm','fr','agr','dl','slot','static','xd','rgt'];
 const GEVMSG={cv:'⚠ Flota desconocida en formación: se acerca',st:'⚡ Tormenta de iones en la zona: drena los escudos',mt:'☄ Lluvia de meteoritos en una zona amplia',tr:'📡 Mercader errante cerca: sigue la señal',cr:'📦 Cápsula de suministros a la deriva'};
 const MPS={wid:0,gk:[],gq:[],gx:[],rid:0,gs:new Set(),pb:[],mi:{},mc:{},lp:[],eb:[],pk:new Set(),dd:new Set(),nid:0,ebn:0,pbn:0,bhd:new Set(),lid:0,cid:0,did:0,tk:0,si:0,sw:null,wt:0,full:1,fl:0,ak:null,ao:new Map(),lg:undefined,
  reset(){this.full=1;this.ak=null;this.lg=undefined},
