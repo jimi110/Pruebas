@@ -4,18 +4,18 @@
    · Lore: el aro de asteroides de Alfa amortigua la presión. Todo lo que queda fuera del aro (el resto del
      universo) tiene una presión mucho más alta: un casco sin reforzar implosiona. No se dibuja nada en el
      mapa: solo hay un aviso al acercarse al aro y una cuenta atrás al salir.
-   · Fundición: SOLO en Estación Umbral (la amarilla antes de Omega). Convierte mineral raro en lingotes, que
-     se guardan en el almacén común de todas las bases (QX.ing).
+   · Los lingotes (fundidos en Estación Umbral desde la pestaña ECONOMÍA, ver basehub.js) se guardan por tipo en
+     el almacén común de todas las bases (QX.ig); aquí solo se gastan.
    · Refuerzos: en el apartado CASCO de Ingeniería, al final, estando atracado en Base Omega (+100 de
      resistencia, 30 lingotes + 3000 cr, uno por nave; la flota, más barata). Un salto hacia fuera sin refuerzo
      se corta en el límite del aro.
    · Se carga como script clásico tras quests.js y comparte el ámbito global. No se ejecuta en multijugador.
    ========================================================================== */
 "use strict";
-const IMPIN=1500,IMPT=7,IMPH={l:30,c:3000},IMPF={l:8,c:400},IMPW={pt:1,ti:1,ir:2,ne:3},IMPK=Object.keys(IMPW);
+const IMPIN=1500,IMPT=7,IMPH={l:30,c:3000},IMPF={l:8,c:400},IMPK=['pt','ti','ir','ne'];
 const impRing=()=>FIELDS.find(q=>q.ring),impE=a=>{const F=impRing();return F?F.rr(a)+RINGW*1.25:0};
 function impLv(x,y){const e=impE(Math.atan2(y,x));if(!e)return 0;const r=Math.hypot(x,y);return r<e-600?0:r<e+IMPIN?1:2}   // 0 aro/Alfa · 1 aviso (borde del aro) · 2 presión exterior: todo lo de fuera
-const impKeep=()=>qOn('c4.2')&&!qdn('c4.3'),impAllies=()=>wing.filter(w=>w.own&&w.hp>0);
+const impAllies=()=>wing.filter(w=>w.own&&w.hp>0);
 const IMPS={t:0,ov:null,h:null},impSt=()=>BASES.find(b=>b.n==='Estación Umbral');
 function impOv(h,hot){let el=IMPS.ov;if(!el){el=IMPS.ov=document.createElement('div');el.id='impW';
   el.style.cssText='position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);z-index:38;pointer-events:none;display:none;text-align:center;font:12px ui-monospace,Menlo,monospace;color:#ffd9d2;background:rgba(40,6,8,.86);border:1px solid #ff4a3a;padding:8px 14px;max-width:min(420px,70%)';document.body.appendChild(el)}
@@ -40,19 +40,14 @@ function impUpd(dt){
   impOv(m,lv===2&&!pr)}
 /* ---------- fundición y refuerzos ---------- */
 function impAct(a){const d=ship.docked;if(!d)return;const isOm=d.n===OM.n;
-  if(a==='smelt'){if(d.n!=='Estación Umbral')return toast('La fundición está en Estación Umbral');let n=0,l=0;for(const k of IMPK){const q=Math.floor(ship.inv[k]||0);if(q<=0)continue;ship.inv[k]-=q;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,(ship.ore||0)-q);n+=q;l+=q*IMPW[k]}
-    if(!n)return toast('No llevas mineral raro (platino, titanio, iridio o neutronita)');QX.ing=(QX.ing|0)+l;QX.ingT=(QX.ingT|0)+l;toast('🔥 '+n+' minerales fundidos: +'+l+' lingotes en el almacén común')}
-  else if(a==='hull'){if(!isOm)return toast('El refuerzo solo se vende en Base Omega');if(T.imp)return;
-    if((QX.ing|0)<IMPH.l)return toast('Faltan lingotes: necesitas '+IMPH.l);if(ship.cred<IMPH.c)return toast('Créditos insuficientes: '+IMPH.c+' cr');
-    QX.ing-=IMPH.l;ship.cred-=IMPH.c;T.imp=1;T.hull+=100;ship.hull=Math.min(T.hull,ship.hull+100);QX.hu=(QX.hu|0)+1;toast('✔ Casco reforzado: +100 de resistencia y a salvo de la implosión')}
+  if(a==='hull'){if(!isOm)return toast('El refuerzo solo se vende en Base Omega');if(T.imp)return;
+    if(ingTot()<IMPH.l)return toast('Faltan lingotes: necesitas '+IMPH.l);if(ship.cred<IMPH.c)return toast('Créditos insuficientes: '+IMPH.c+' cr');
+    ingSpend(IMPH.l);ship.cred-=IMPH.c;T.imp=1;T.hull+=100;ship.hull=Math.min(T.hull,ship.hull+100);QX.hu=(QX.hu|0)+1;toast('✔ Casco reforzado: +100 de resistencia y a salvo de la implosión')}
   else if(a==='fleet'){if(!isOm)return toast('El refuerzo solo se vende en Base Omega');const f=impAllies().filter(w=>!w.imp);if(!f.length)return;
-    const l=f.length*IMPF.l,c=f.length*IMPF.c;if((QX.ing|0)<l)return toast('Faltan lingotes: necesitas '+l);if(ship.cred<c)return toast('Créditos insuficientes: '+c+' cr');
-    QX.ing-=l;ship.cred-=c;for(const w of f){w.imp=1;w.max+=100;w.hp=Math.min(w.max,w.hp+100)}toast('✔ Flota reforzada ('+f.length+' nave'+(f.length>1?'s':'')+')')}
+    const l=f.length*IMPF.l,c=f.length*IMPF.c;if(ingTot()<l)return toast('Faltan lingotes: necesitas '+l);if(ship.cred<c)return toast('Créditos insuficientes: '+c+' cr');
+    ingSpend(l);ship.cred-=c;for(const w of f){w.imp=1;w.max+=100;w.hp=Math.min(w.max,w.hp+100)}toast('✔ Flota reforzada ('+f.length+' nave'+(f.length>1?'s':'')+')')}
   saveGame();if(state==='ship'){try{renderShip()}catch(e){}}}
-function impSmelt(){const d=ship.docked;if(!d||MPG||d.n!=='Estación Umbral')return'';
-  const inv=IMPK.map(k=>[k,Math.floor(ship.inv[k]||0)]).filter(q=>q[1]>0),pot=inv.reduce((s,q)=>s+q[1]*IMPW[q[0]],0),ing=QX.ing|0;
-  return `<div class=card2 style="border-color:#ff9a4f"><b style="color:#ff9a4f">FUNDICIÓN</b><div class=dim style="margin:6px 0">Funde mineral raro en lingotes: platino ×1, titanio ×1, iridio ×2, neutronita ×3. Los lingotes se guardan en el almacén común de todas las bases.</div>${kv('Lingotes en almacén',ing)}${kv('Mineral raro en bodega',inv.length?inv.map(q=>MIN[q[0]][0]+' '+q[1]).join(' · '):'—')}${sq('Fundir mineral raro'+(pot?' (+'+pot+' lingotes)':''),'data-imp="smelt"'+(pot?'':' disabled'),'width:100%;margin-top:8px')}</div>`}
-function impHullCard(){if(MPG)return'';const d=ship.docked,isOm=!!d&&d.n===OM.n,f=impAllies().filter(w=>!w.imp),all=impAllies().length,ing=QX.ing|0,okH=ing>=IMPH.l&&ship.cred>=IMPH.c,lf=f.length*IMPF.l,cf=f.length*IMPF.c,okF=ing>=lf&&ship.cred>=cf;
+function impHullCard(){if(MPG)return'';const d=ship.docked,isOm=!!d&&d.n===OM.n,f=impAllies().filter(w=>!w.imp),all=impAllies().length,ing=ingTot(),okH=ing>=IMPH.l&&ship.cred>=IMPH.c,lf=f.length*IMPF.l,cf=f.length*IMPF.c,okF=ing>=lf&&ship.cred>=cf;
   let h=`<div class=card2 style="border-color:#7de3ff"><b style="color:#7de3ff">REFUERZO ANTI-IMPLOSIÓN</b><div class=dim style="margin:6px 0">Fuera del aro de Alfa la presión es altísima. Este refuerzo suma +100 de resistencia al casco y permite salir. Una vez por nave.</div>${kv('Lingotes en almacén',ing)}`;
   if(T.imp)h+='<div style="color:#7dff9b;margin-top:6px">✔ Esta nave ya está reforzada.</div>';
   else h+=kv('Coste',IMPH.l+' lingotes + '+IMPH.c+' cr',okH?'':'#ff6b6b')+(isOm?sq('Comprar refuerzo de casco','data-imp="hull"'+(okH?'':' disabled'),'width:100%;margin-top:8px'):`<div class=dim style="margin-top:6px">Se compra en Base Omega${d?' (no en '+d.n+')':''}.</div>`);
