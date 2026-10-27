@@ -18,7 +18,7 @@ function drawHangar(){cam.x=time*40;cam.y=0;g.fillStyle='#05070d';g.fillRect(0,0
   const hh=Math.max(110,H-250),cx=W/2,cy=hh/2+30,sc=Math.min(6,hh/42,W/90);
   g.strokeStyle='rgba(79,209,255,.12)';g.lineWidth=1;for(let i=-6;i<=6;i++){g.beginPath();g.moveTo(cx+i*40,cy+sc*20);g.lineTo(cx+i*160,H);g.stroke()}
   brk(cx,cy,sc*24,T.col);drawS(cx,cy,-Math.PI/2+Math.sin(time*.8)*.12,T.sh,T.col,sc,{...pst(),th:.15});
-  txt('HANGAR · '+(ship.docked||A).n.toUpperCase(),16,24,'#4fd1ff');txt('CRÉDITOS '+ship.cred,16,42,'#cfe8ff');
+  txt('CRÉDITOS '+ship.cred,16,42,'#cfe8ff');
   txt(T.n.toUpperCase()+' — '+T.r,W/2,cy-sc*26-8,T.col,'center',14)}
 
 function warpFx(back){const w=warp,t=w.t,c=Math.cos(w.h),n=Math.sin(w.h);
@@ -316,7 +316,7 @@ function drawHangar(){cam.x=time*40;cam.y=0;g.fillStyle='#05070d';g.fillRect(0,0
   drawS(cx-(1-e)*W*.75,cy-(1-e)*H*.25,a,T.sh,T.col,sc*(.55+.45*e),{...pst(),th:t<1?.9-.75*e:.15});
   if(t<1){g.globalCompositeOperation='lighter';const sg=g.createRadialGradient(cx,fy,0,cx,fy,sc*50);sg.addColorStop(0,'rgba(125,255,155,'+.5*e+')');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(cx-sc*50,fy-sc*50,sc*100,sc*100);g.globalCompositeOperation='source-over'}
   const dr=clamp(1-(time-hgT)/.6,0,1);if(dr>0){const w=W/2*dr;g.fillStyle='#070d18';g.fillRect(0,0,w,H);g.fillRect(W-w,0,w,H);g.fillStyle='rgba(79,209,255,'+dr+')';g.fillRect(w-3,0,3,H);g.fillRect(W-w,0,3,H)}}
- {const u=CFG.ui||1;vHud(()=>{txt('HANGAR · '+(ship.docked||A).n.toUpperCase(),16,24,'#4fd1ff');txt(T.n.toUpperCase()+' — '+T.r,W/2,(cy-sc*26-8)/u,T.col,'center',14)})}}
+ {const u=CFG.ui||1;vHud(()=>{txt(T.n.toUpperCase()+' — '+T.r,W/2,(cy-sc*26-8)/u,T.col,'center',14)})}}
 function drawHeat(){if(!(T.wp==='laser'&&WOWN.laser))return;const w=Math.min(140,W*.3),x=W/2-w/2,y=12,h=ship.heat||0;g.fillStyle='rgba(10,20,35,.75)';g.fillRect(x,y,w,8);g.fillStyle=ship.ovh?'#ff4d4d':h>70?'#ffb347':'#ff7ad9';g.fillRect(x,y,w*clamp(h/100,0,1),8);g.strokeStyle='rgba(255,122,217,.5)';g.strokeRect(x,y,w,8);txt(ship.ovh?'LÁSER SOBRECALENTADO':'LÁSER',W/2,y+20,'#ff7ad9','center',9)}
 function vHud(f){const u=CFG.ui||1;if(u===1)return f();const W0=W,H0=H,S0=SAFE,m0=mouse,z0=zoom;zoom=z0/u;W=W0/u;H=H0/u;SAFE={t:S0.t/u,r:S0.r/u,b:S0.b/u,l:S0.l/u};mouse=m0&&{x:m0.x/u,y:m0.y/u};g.save();g.scale(u,u);try{return f()}finally{g.restore();zoom=z0;W=W0;H=H0;SAFE=S0;mouse=m0}}
 function mmR(){const u=CFG.ui||1;let m;vHud(()=>{m=mm()});return{x:m.x*u,y:m.y*u,w:m.w*u,h:m.h*u,r:m.r}}

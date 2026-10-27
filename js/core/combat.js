@@ -15,8 +15,7 @@ function hurt(a,m,src){if((CFG.cre||MP.cre)&&CFG.inv)return;if(ship.docked||ship
 function gHit(b){for(const n of npcs)if(n.team==='g'&&n.hp>0&&Math.hypot(n.x-b.x,n.y-b.y)<(n.rad||18)){b.life=0;n.hp-=b.d;boom(b.x,b.y,5,'#f66');if(b.rb)return 1;if(n.om){omAn=time+60;toast('⚠ Has atacado a la guardia de Omega')}else{wantT=time+60;if(!wanted){wanted=1;toast('⚠ ¡Has atacado a la guardia de Alfa! Ahora te atacan todos')}}if(n.hp<=0)boom(n.x,n.y,26,'#ff8a5c');return 1}return 0}
 function mineFx(o,c,dt,r){if(Math.random()<dt*45){const a=rnd(0,TAU),v=rnd(50,170);parts.push({x:o.x+Math.cos(a)*r*.7,y:o.y+Math.sin(a)*r*.7,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rnd(.2,.5),max:.5,c})}
  if(Math.random()<dt*26)sucks.push({x:o.x+rnd(-.6,.6)*r,y:o.y+rnd(-.6,.6)*r,life:.6,max:.6,c})}
-function dockAt(b){if(b===OM||b.n===OM.n)cxFind({cxk:'go'});sfx('d');ship.docked=b;let gain=0;const kp=typeof impKeep==='function'&&impKeep()?IMPK:[],kept={};let ko=0;for(const k in ship.inv){if(kp.includes(k)&&ship.inv[k]>0){kept[k]=ship.inv[k];ko+=ship.inv[k];continue}gain+=Math.floor(ship.inv[k])*Math.round(C.sell*b.mult*(MIN[k]?MIN[k][2]:1))}qEv('del',b.n,ship.inv);ship.inv=kept;ship.cred+=gain;qEv('dock',b.n);if(gain)qEv('sell',gain);
-  toast(gain?`Mineral vendido: +${gain} cr`:`Atracado en ${b.n}`);if(ko)toast('Mineral raro conservado para fundirlo (Nave [N] → Fundición)');ship.ore=ko}
+function dockAt(b){if(b===OM||b.n===OM.n)cxFind({cxk:'go'});sfx('d');ship.docked=b;qEv('dock',b.n);toast('Atracado en '+b.n+(ship.ore>0?' · vende tu mineral en Nave [N] → ECONOMÍA':''))}
 function updWarp(dt){const w=warp,h=w.h,A0=w.a,D=w.dest,T1=w.t1||.3,L=w.te-T1;w.t+=dt;if(w.z0==null){w.z0=zoom;wFollowJump(w)}
   ship.a+=angDiff(ship.a,h)*Math.min(1,18*dt);
   if(w.t<T1){ship.vx=ship.vy=0}

@@ -66,7 +66,7 @@ function worldUpd(dt){if(mpSlave()){spawnT=3;cmT=1e9;GEV.t=1e9}RGH(r=>r.update(d
     else for(const n of npcs)if(n.team==='e'&&n.hp>0&&hit(n,b)){b.life=0;if(mpSlave()||b.gh){boom(b.x,b.y,5,'#f66');break}n.hp-=b.d;n.lh=time;if(b.own==='p'&&!b.by){lastShot=n;lastShotT=time}boom(b.x,b.y,5,'#f66');
       if(n.hp<=0){boom(n.x,n.y,26,'#ff8a5c');for(let i=0;i<(n.boss?14:3);i++)loot.push({x:n.x+rnd(-25,25),y:n.y+rnd(-25,25),v:(n.boss?6:2)+((Math.random()*4)|0),life:120});if(b.own==='p'&&!b.wg){if(b.by)mpKill(b.by,n);else{cxFind(n);ship.cred+=n.boss?250:20;toast(n.boss?'¡Jefe pirata destruido! +250 cr':'Pirata destruido: +20 cr')}}}break}}
   bullets=bullets.filter(b=>b.life>0);for(const n of npcs)if(n.hp<=0&&n.team==='e'&&!n.kc){n.kc=1;qEv('kill');BAL.st.lk=time}npcs=npcs.filter(n=>n.hp>0);}
-function upd(dt){hgTick(dt);if(state!=='menu'){qTick(dt);trlTick(dt);sczTick();if(state==='play'||(MP.role&&(state==='pause'||state==='ship')))shipCol(dt)}
+function upd(dt){hgTick(dt);if(typeof mkTick==='function')try{mkTick(dt);hubSync()}catch(e){console.warn('[centro de base]',e)}if(state!=='menu'){qTick(dt);trlTick(dt);sczTick();if(state==='play'||(MP.role&&(state==='pause'||state==='ship')))shipCol(dt)}
   for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);
   for(const q of sucks){q.px=q.x;q.py=q.y;q.life-=dt;const k=Math.min(1,9*dt);q.x+=(ship.x-q.x)*k;q.y+=(ship.y-q.y)*k;if(dist(q,ship)<14)q.life=0}sucks=sucks.filter(q=>q.life>0);
   if(wanted&&time>wantT){wanted=0;toast('La guardia de Alfa ya no te persigue')}
