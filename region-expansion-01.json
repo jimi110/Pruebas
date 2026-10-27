@@ -1,6 +1,6 @@
 {
   "id": "region-01", "seed": 1101, "tier": 2, "danger": 2, "regenMin": 30,
-  "event": { "fleet": 5, "boss": "Centinela Zafiro", "hp": 650, "reward": 800 },
+  "event": { "fleet": 5, "boss": "Centinela Zafiro", "hp": 1100, "reward": 800 },
   "asteroids": {
     "fields": [
       { "n": "Campo Zafiro", "x": 100000, "y": -15000, "rx": 5200, "ry": 3400, "rot": 0.4, "count": 90, "tier": 2, "ore": [["cu",0.3],["cr",0.35],["pt",0.2],["ti",0.15]] },
