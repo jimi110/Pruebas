@@ -52,7 +52,7 @@ function wStop(a,px,py){if(a.bs)return sendW(a,a.bs);toast(a.n+' no tiene base d
 function baseMenu(px,py,a){const bs=baseList(a);ctxMenu(px,py,bs.map(b=>['Enviar a '+b.n+' · '+km(dist(a,b)),()=>sendW(a,b)]).concat([['‹ Atrás',()=>allyMenu(px,py,a)]]))}
 function sendW(a,b){if(!a.own&&ownN()>=4)return toast('Flota llena (4/4)');a.own=1;a.esc=null;a.st='base';a.hb=b;a.jp=null;toast(a.n+' viaja a '+b.n);qEv('wgf');if(wOpen)wRender()}
 function whereIs(o){let n='el espacio profundo',f=0,bd=1e18;for(const b of BASES){const d=dist(o,b);if(d<b.r+1500&&d<bd){bd=d;n='cerca de '+b.n;f=1}}if(!f){for(const F of FIELDS)if(F.ins(o.x,o.y,300)){n='en '+F.n;f=1;break}}if(!f&&dist(o,SCZ)<SCZ.r+400)n='en el '+SCZ.n;return n}
-function wLbl(w){if(w.svc)return w.back?'Volviendo a '+w.hb.n.replace('Base ','').replace('Estación ',''):w.arr?(w.k==='tow'?'Remolcando':'Reparando'):'En camino hacia ti';if(w.jp)return'Saltando';if(w.st==='base'){const far=dist(w,w.hb)>w.hb.r+700;return(far?'rumbo a ':'en ')+w.hb.n.replace('Base ','').replace('Estación ','')}if(w.st==='guard')return'guardia (en venta)';if(w.st==='esc'&&w.esc)return(w.esc.k==='kill'?'Cazando a ':'Escoltando a ')+w.esc.n;return({follow:dist(w,ship)>3000?'Rezagada':'Escolta',idle:'Protegiendo '+(w.hb?w.hb.n.replace('Base ','').replace('Estación ',''):'la base'),rescue:'En camino'})[w.st]||w.st}
+function wLbl(w){if(w.fm&&w.st==='mine'&&typeof fmLbl==='function')return fmLbl(w);if(w.svc)return w.back?'Volviendo a '+w.hb.n.replace('Base ','').replace('Estación ',''):w.arr?(w.k==='tow'?'Remolcando':'Reparando'):'En camino hacia ti';if(w.jp)return'Saltando';if(w.st==='base'){const far=dist(w,w.hb)>w.hb.r+700;return(far?'rumbo a ':'en ')+w.hb.n.replace('Base ','').replace('Estación ','')}if(w.st==='guard')return'guardia (en venta)';if(w.st==='esc'&&w.esc)return(w.esc.k==='kill'?'Cazando a ':'Escoltando a ')+w.esc.n;return({follow:dist(w,ship)>3000?'Rezagada':'Escolta',idle:'Protegiendo '+(w.hb?w.hb.n.replace('Base ','').replace('Estación ',''):'la base'),rescue:'En camino'})[w.st]||w.st}
 /* ----- saltos de la flota: viajan de verdad, como tú ----- */
 function wJump(w,D,delay,t0){const d=dist(w,D),a=t0==null?1.2:t0;w.jp={a:{x:w.x,y:w.y},d:{x:D.x,y:D.y},t:0,t1:a+(delay||0),te:a+(delay||0)+Math.max(1.2,d/12000)/wspV(),h:Math.atan2(D.y-w.y,D.x-w.x)}}
 function wjStep(w,dt){const j=w.jp;j.t+=dt;w.a+=angDiff(w.a,j.h)*Math.min(1,10*dt);if(j.t<j.t1){w.vx=w.vy=0;return}
@@ -173,7 +173,7 @@ function wingUpd(dt){
  {const u=wUnl();if(WG.ux!==u){WG.ux=u;wP(state)}}
  if(wUnl()&&!WG.u&&state==='play'&&!ship.dead){WG.u=1;toast('Escoltas desbloqueadas: botón Escolta [F]');wP(state);wTutOpen(TYPES[4].own&&!WG.o4?1:0)}
  for(const r of svr){const h=r.hb,dx=h.x-r.x,dy=h.y-r.y,d=Math.hypot(dx,dy)||1;if(d<h.r*.6+40||dist(r,ship)>25000)r.gone=1;else{const v=Math.min(r.spd,(d-h.r*.5)*1.2+60);r.vx=dx/d*v;r.vy=dy/d*v;r.x+=r.vx*dt;r.y+=r.vy*dt;r.a+=angDiff(r.a,Math.atan2(dy,dx))*Math.min(1,6*dt)}}if(svr.some(r=>r.gone))svr=svr.filter(r=>!r.gone);
- wT-=dt;if(wOpen&&wT<=0){wT=.5;wRender()}
+ wT-=dt;if(typeof fmTick==='function')fmTick(dt);if(wOpen&&wT<=0){wT=.5;wRender()}
  const fo=wing.filter(w=>w.st==='follow'),hd=wHd(dt);{/* curación: solo si hay un técnico (tú con el Técnico o una nave Técnico de la flota); cura una nave cada vez, poco a poco */
   const hl=hlcV(),src=[];if(hl&&on('rep')&&!ship.dead)src.push({o:ship,r:hl,d:600});for(const q of wing)if(q.own&&q.ti===4&&q.hp>0&&!q.jp)src.push({o:q,r:.03,d:650});
   const dm=w=>w.own&&w.hp>0&&!w.jp&&(w.hp<w.max-.01||(w.smax&&(w.shd||0)<w.smax-.01)),rc=(w,q)=>q.o!==w&&dist(q.o,w)<q.d,ok=w=>dm(w)&&src.some(q=>rc(w,q));
@@ -185,6 +185,7 @@ function wingUpd(dt){
    if(hb&&time-(w.lh||-99)>4){if(w.hp<w.max)w.hp=Math.min(w.max,w.hp+w.max*.04*dt);if(w.smax&&(w.shd||0)<w.smax)w.shd=Math.min(w.smax,(w.shd||0)+w.smax*.06*dt)}}}
  for(const w of wing){w.cd-=dt;if(w.smax&&w.rg&&time-(w.lh||-99)>6)w.shd=Math.min(w.smax,(w.shd||0)+w.smax*.08*dt);if(w.jp){wjStep(w,dt);continue}
   if(w.rgt)continue;   /* remolcada por la guardia de región: RGEV la mueve */
+  if(w.st==='mine'&&typeof fmUpd==='function'){fmUpd(w,dt);continue}
   if(w.st==='rescue'){if(w.tow&&ship.wreck)continue;const dx=ship.x-w.x,dy=ship.y-w.y,d=Math.hypot(dx,dy);{const v=Math.min(w.spd,d*1.2);if(d>50)wSteer(w,dx/d*v-w.vx*.35,dy/d*v-w.vy*.35,dt,2.6,w.spd);else{w.vx*=1-3*dt;w.vy*=1-3*dt;w.a+=angDiff(w.a,ship.a)*Math.min(1,3*dt)}}w.x+=w.vx*dt;w.y+=w.vy*dt;continue}
   if(w.st==='esc'&&w.esc){wEsc(w,dt);continue}
   const fl=w.st==='follow',an=fl?ship:(w.hb||(w.hb=nBase(w)));let tg=null,td=1e9;

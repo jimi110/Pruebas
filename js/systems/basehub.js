@@ -13,7 +13,7 @@
    · Script clásico: comparte el ámbito global con el resto del juego.
    ========================================================================== */
 "use strict";
-let hubTab='nave',mkSel='fe',MKV=0,MKA=0,MKH=0;
+let hubTab='nave',mkSel='fe',MKV=0,MKA=0,MKH=0,flSel=0,flMin='fe',flMode='sell',FLID=0;
 const MKN=90,MKSP=.92,MKBY=1.1,MKIN=2.2;
 const MKS0={fe:900,cu:700,cr:450,pt:260,ti:160,ir:90,ne:40,sc:1500};
 /* ---------- catálogo ---------- */
@@ -46,23 +46,28 @@ function mkTick(dt){if(state==='menu'||!QX)return;mkInit();MKA+=dt;MKH+=dt;
 const ingTot=()=>Object.values(QX.ig||{}).reduce((a,b)=>a+(b||0),0);
 function ingSpend(n){if(ingTot()<n)return false;const ks=Object.keys(QX.ig).filter(k=>QX.ig[k]>0).sort((a,b)=>mkMid('i_'+a)-mkMid('i_'+b));
   for(const k of ks){const q=Math.min(QX.ig[k],n);QX.ig[k]-=q;n-=q;if(n<=0)break}return true}
+/* ---------- almacén común (todas las bases): crudo y chatarra; los lingotes están en QX.ig ---------- */
+const whO=()=>(QX.wh=QX.wh||{}),whGet=k=>Math.floor(whO()[k]||0);
+function whAdd(k,n){const o=whO();o[k]=(o[k]||0)+n;if(o[k]<.0001)delete o[k]}
+const whTot=()=>Object.values(whO()).reduce((a,b)=>a+(b||0),0);
 /* ---------- operaciones ---------- */
-const mkHeld=k=>{const I=mkItem(k);return I.raw?Math.floor(ship.inv[k]||0):I.ing?Math.floor((QX.ig||{})[I.ing]||0):Math.floor(ship.scrap||0)};
-function mkSell(k,q,quiet){const d=ship.docked,I=mkItem(k);if(!d||!I)return 0;const have=mkHeld(k),n=q==='all'?have:Math.min(+q||0,have);if(n<=0){if(!quiet)toast('No tienes '+I.n.toLowerCase()+' para vender');return 0}
+const mkHeld=k=>{const I=mkItem(k);return I.raw?Math.floor(ship.inv[k]||0)+whGet(k):I.ing?Math.floor((QX.ig||{})[I.ing]||0):Math.floor(ship.scrap||0)+whGet('sc')};
+const mkCargo=k=>Math.floor(ship.inv[k]||0);
+function mkSell(k,q,quiet,src){const d=ship.docked,I=mkItem(k);if(!d||!I)return 0;const have=src==='cargo'?mkCargo(k):mkHeld(k),n=q==='all'?have:Math.min(+q||0,have);if(n<=0){if(!quiet)toast('No tienes '+I.n.toLowerCase()+' para vender');return 0}
   const o=mkO(k);let rev=0;const s=o.s;for(let i=0;i<n;i++){o.s=s+i;rev+=mkSellP(k,d)}o.s=s+n;rev=Math.floor(rev);
-  if(I.raw){ship.inv[k]=(ship.inv[k]||0)-n;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,(ship.ore||0)-n);qEv('del',d.n,{[k]:n})}
-  else if(I.ing)QX.ig[I.ing]-=n;else ship.scrap-=n;
+  if(I.raw){const c=Math.min(n,mkCargo(k));if(c){ship.inv[k]-=c;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,(ship.ore||0)-c)}if(n>c)whAdd(k,-(n-c));qEv('del',d.n,{[k]:n})}
+  else if(I.ing)QX.ig[I.ing]-=n;else{const c=Math.min(n,Math.floor(ship.scrap||0));ship.scrap-=c;if(n>c)whAdd('sc',-(n-c))}
   ship.cred+=rev;qEv('sell',rev);if(!quiet)toast('Vendido: '+n+' × '+I.n.toLowerCase()+' → +'+rev+' cr');return rev}
 function mkBuy(k,q){const d=ship.docked,I=mkItem(k);if(!d||!I)return;const o=mkO(k);let max=Math.floor(o.s-I.s0*.05);if(max<1)return toast('Sin existencias de '+I.n.toLowerCase()+' en el mercado');
-  if(I.raw)max=Math.min(max,Math.floor(T.cargo-ship.ore));if(max<1)return toast('Bodega llena');
   const want=q==='max'?max:Math.min(+q||0,max);let n=0,cost=0;const s=o.s;for(let i=0;i<want;i++){o.s=s-i;const p=mkBuyP(k);if(cost+p>ship.cred)break;cost+=p;n++}
   o.s=s-n;if(n<=0)return toast('Créditos insuficientes');cost=Math.ceil(cost);ship.cred-=cost;
-  if(I.raw){ship.inv[k]=(ship.inv[k]||0)+n;ship.ore+=n}else if(I.ing)QX.ig[I.ing]=(QX.ig[I.ing]||0)+n;else ship.scrap+=n;
-  toast('Comprado: '+n+' × '+I.n.toLowerCase()+' por '+cost+' cr')}
-function mkSellCargo(){let tot=0,n=0;for(const k in MIN){const h=mkHeld(k);if(h>0){tot+=mkSell(k,'all',1);n+=h}}if(!n)return toast('No llevas mineral en la bodega');toast('Carga vendida: '+n+' minerales → +'+tot+' cr')}
-function mkSmelt(k,q){const d=ship.docked;if(!d||d.n!=='Estación Umbral')return toast('La fundición está en Estación Umbral');const have=Math.floor(ship.inv[k]||0),n=q==='all'?have:Math.min(+q||0,have);if(n<=0)return toast('No llevas ese mineral');
-  ship.inv[k]-=n;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,ship.ore-n);QX.ig[k]=(QX.ig[k]||0)+n;QX.ingT=(QX.ingT|0)+n;toast('🔥 '+n+' × '+MIN[k][0].toLowerCase()+' fundidos: +'+n+' lingotes en el almacén común')}
-function mkAct(s){const p=String(s).split(':');try{if(p[0]==='sel')mkSel=p[1];else if(p[0]==='sell')mkSell(p[1],p[2]);else if(p[0]==='buy')mkBuy(p[1],p[2]);else if(p[0]==='cargo')mkSellCargo();else if(p[0]==='smelt')mkSmelt(p[1],p[2]);
+  if(I.raw)whAdd(k,n);else if(I.ing)QX.ig[I.ing]=(QX.ig[I.ing]||0)+n;else whAdd('sc',n);
+  toast('Comprado: '+n+' × '+I.n.toLowerCase()+' por '+cost+' cr → almacén común')}
+function mkSellN(k,n,b){const o=mkO(k),s0=o.s;let rev=0;for(let i=0;i<n;i++){o.s=s0+i;rev+=mkSellP(k,b)}o.s=s0+n;return Math.floor(rev)}
+function mkSellCargo(){let tot=0,n=0;for(const k in MIN){const h=mkCargo(k);if(h>0){tot+=mkSell(k,'all',1,'cargo');n+=h}}if(!n)return toast('No llevas mineral en la bodega');toast('Carga vendida: '+n+' minerales → +'+tot+' cr')}
+function mkSmelt(k,q){const d=ship.docked;if(!d||d.n!=='Estación Umbral')return toast('La fundición está en Estación Umbral');const have=mkHeld(k),n=q==='all'?have:Math.min(+q||0,have);if(n<=0)return toast('No tienes ese mineral');
+  {const c=Math.min(n,mkCargo(k));if(c){ship.inv[k]-=c;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,ship.ore-c)}if(n>c)whAdd(k,-(n-c))}QX.ig[k]=(QX.ig[k]||0)+n;QX.ingT=(QX.ingT|0)+n;toast('🔥 '+n+' × '+MIN[k][0].toLowerCase()+' fundidos: +'+n+' lingotes en el almacén común')}
+function mkAct(s){const p=String(s).split(':');try{if(p[0]==='sel')mkSel=p[1];else if(p[0]==='sell')mkSell(p[1],p[2]);else if(p[0]==='buy')mkBuy(p[1],p[2]);else if(p[0]==='cargo')mkSellCargo();else if(p[0]==='smelt')mkSmelt(p[1],p[2]);else if(p[0]==='wh')whMove(p[1],p[2],p[3]);else if(p[0]==='up')upAct(p[1],p[2]);else if(p[0]==='fl')flAct(p);
   if(p[0]!=='sel')saveGame()}catch(e){console.warn('[mercado]',e)}}
 /* ---------- textos ---------- */
 const MKL={fe:['Esqueleto de cascos, vigas y remaches. Tan común que casi nunca escasea.','Blindaje básico, reparaciones y chatarra.','Fácil: no exige mejoras de minería.'],
@@ -91,20 +96,20 @@ function mkChart(h,col){const W=320,H=120,pl=34,mn0=Math.min(...h),mx0=Math.max(
 const mkStock=I=>{const r=mkO(I.k).s/I.s0;return r<.45?['ESCASEZ','#ff6b6b']:r<.8?['BAJAS','#ffb347']:r<1.3?['NORMAL','#7dff9b']:['ABUNDANTE','#7dc8ff']};
 const mkTrend=h=>{const a=h[Math.max(0,h.length-7)],b=h[h.length-1];return a?(b-a)/a*100:0};
 /* ---------- paneles ---------- */
-function hubRender(){const sp=$('shipP'),sc=sp.scrollTop,l=sp.querySelector('.mkl'),ls=l?l.scrollTop:0;sp.innerHTML=hubTab==='econ'?hubEcon():hubBase();sp.scrollTop=sc;const l2=sp.querySelector('.mkl');if(l2)l2.scrollTop=ls}
-function hubEcon(){mkInit();const d=ship.docked,umb=d&&d.n==='Estación Umbral',cargoV=Object.keys(MIN).reduce((a,k)=>a+mkHeld(k)*mkSellP(k,d),0);
+function hubRender(){const sp=$('shipP'),sc=sp.scrollTop,l=sp.querySelector('.mkl'),ls=l?l.scrollTop:0;sp.innerHTML=hubTab==='econ'?hubEcon():hubTab==='wh'?hubWh():hubTab==='upg'?hubUpg():hubTab==='fleet'?hubFleet():hubBase();sp.scrollTop=sc;const l2=sp.querySelector('.mkl');if(l2)l2.scrollTop=ls}
+function hubEcon(){mkInit();const d=ship.docked,umb=d&&d.n==='Estación Umbral',cargoV=Object.keys(MIN).reduce((a,k)=>a+mkCargo(k)*mkSellP(k,d),0);
   const chip=(t,v)=>`<span class=cc>${t}<b>${v}</b></span>`;
   let h=`<div class=sh1><b style="color:#ffd166;letter-spacing:.12em">ECONOMÍA · ${d.n.toUpperCase()}</b>${sq('Cerrar [N]','data-x=1')}</div>
-<div class=res>${chip('◈ ',ship.cred+' cr')}${chip('Chatarra ',ship.scrap|0)}${chip('Carga ',Math.floor(ship.ore)+'/'+T.cargo)}${chip('Almacén ',ingTot()+' lingotes')}${d.mult!==1?chip('Paga ','×'+d.mult):''}</div>`;
+<div class=res>${chip('◈ ',ship.cred+' cr')}${chip('Chatarra ',ship.scrap|0)}${chip('Carga ',Math.floor(ship.ore)+'/'+T.cargo)}${chip('Almacén ',ingTot()+' lingotes · '+whTot()+' crudo')}${d.mult!==1?chip('Paga ','×'+d.mult):''}</div>`;
   if(QX.mk.news)h+=`<div class=card2 style="border-color:#ffd166;margin-top:8px"><span style="color:#ffd166">📰 Mercado:</span> ${QX.mk.news.txt}</div>`;
-  h+=`<div class=card2 style="margin-top:8px">${sq('Vender toda la carga'+(cargoV>=1?' (≈ '+Math.floor(cargoV)+' cr)':''),'data-mk="cargo"'+(cargoV>=1?'':' disabled'),'width:100%')}<div class=dim style="margin-top:6px">Atracar no vende nada: aquí eliges qué vender. Los lingotes se guardan en el almacén común de todas las bases.</div></div>`;
+  h+=`<div class=card2 style="margin-top:8px">${sq('Vender toda la carga'+(cargoV>=1?' (≈ '+Math.floor(cargoV)+' cr)':''),'data-mk="cargo"'+(cargoV>=1?'':' disabled'),'width:100%')}<div class=dim style="margin-top:6px">Atracar no vende nada: aquí eliges qué vender (de tu bodega y del almacén). Lo que compres y los lingotes que fundas van al almacén común de todas las bases.</div></div>`;
   const row=I=>{const o=mkO(I.k),tr=mkTrend(o.h),tc=tr>.5?'#7dff9b':tr<-.5?'#ff8a8a':'#9fb3c8',st=mkStock(I),hd=mkHeld(I.k),sp=I.scr?mkSellP(I.k,d):mkSellP(I.k,d);
     return `<button class="mkrow${I.k===mkSel?' on':''}" data-mk="sel:${I.k}"><i style="background:${I.col}"></i><span style="flex:1;min-width:0"><b>${I.n}</b><small style="display:block;color:${st[1]}">${st[0]}${hd?` · tienes ${hd}`:''}</small></span>${mkSpark(o.h,tc)}<span style="text-align:right;min-width:62px"><b>${mkFmt(sp)}</b><small style="display:block;color:${tc}">${tr>=0?'▲':'▼'} ${Math.abs(tr).toFixed(1)}%</small></span></button>`};
   const L=mkAll();let list='<div class=mkh>CRUDOS</div>'+L.filter(i=>i.raw).map(row).join('')+'<div class=mkh>LINGOTES (cocinados)</div>'+L.filter(i=>i.ing).map(row).join('')+'<div class=mkh>OTROS</div>'+L.filter(i=>i.scr).map(row).join('');
   const I=mkItem(mkSel)||mkItem('fe'),o=mkO(I.k),st=mkStock(I),hd=mkHeld(I.k),sP=mkSellP(I.k,d),bP=mkBuyP(I.k),lore=I.raw?MKL[I.k]:I.ing?['Mineral '+MIN[I.ing][0].toLowerCase()+' fundido y purificado en Estación Umbral. Más valioso y compacto que el crudo: no ocupa bodega, se guarda en el almacén común de todas las bases.','Refuerzos de casco (30 lingotes de cualquier tipo) y comercio.','Se obtiene fundiendo el crudo en Estación Umbral.']:MKSC;
   let dt=`<div class=card2><div style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;background:${I.col};display:inline-block"></i><b style="font-size:16px">${I.n}</b><span class=badge style="margin-left:auto;color:${st[1]}">${st[0]}</span></div>
 <div style="margin:8px 0 4px">${mkChart(o.h,I.col)}</div><div class=dim style="font-size:11px;text-align:right">últimos ~${Math.round(MKN*12/60)} min · el precio cambia con las existencias</div>
-${kv('Te pagan (aquí)',mkFmt(sP)+' cr/ud',I.k===mkSel?'#7dff9b':'')}${kv('Te cobran',mkFmt(bP)+' cr/ud','#ffd166')}${kv('Existencias del mercado',Math.round(o.s)+' (normal ≈ '+I.s0+')')}${kv('Tienes',hd+(I.raw?' en la bodega':I.ing?' en el almacén común':' de chatarra'))}
+${kv('Te pagan (aquí)',mkFmt(sP)+' cr/ud',I.k===mkSel?'#7dff9b':'')}${kv('Te cobran',mkFmt(bP)+' cr/ud','#ffd166')}${kv('Existencias del mercado',Math.round(o.s)+' (normal ≈ '+I.s0+')')}${kv('Tienes',I.raw?hd+' (bodega '+mkCargo(I.k)+' + almacén '+whGet(I.k)+')':I.ing?hd+' en el almacén común':hd+' (nave '+Math.floor(ship.scrap||0)+' + almacén '+whGet('sc')+')')}
 <div style="display:flex;gap:6px;margin-top:8px">${sq('Vender 1','data-mk="sell:'+I.k+':1"'+(hd>=1?'':' disabled'),'flex:1')}${sq('Vender 10','data-mk="sell:'+I.k+':10"'+(hd>=1?'':' disabled'),'flex:1')}${sq('Vender todo','data-mk="sell:'+I.k+':all"'+(hd>=1?'':' disabled'),'flex:1;color:#7dff9b')}</div>
 <div style="display:flex;gap:6px;margin-top:6px">${sq('Comprar 1','data-mk="buy:'+I.k+':1"','flex:1')}${sq('Comprar 10','data-mk="buy:'+I.k+':10"','flex:1')}${sq('Comprar máx.','data-mk="buy:'+I.k+':max"','flex:1;color:#ffd166')}</div>`;
   if(I.raw)dt+=umb?`<div style="border-top:1px solid #1d3550;margin:10px 0 6px"></div><b style="color:#ff9a4f">FUNDICIÓN</b><div class=dim style="margin:4px 0">Funde ${MIN[I.k][0].toLowerCase()} en lingotes (1 por 1). Solo en Estación Umbral.</div><div style="display:flex;gap:6px">${sq('Fundir 1','data-mk="smelt:'+I.k+':1"'+(hd>=1?'':' disabled'),'flex:1')}${sq('Fundir todo','data-mk="smelt:'+I.k+':all"'+(hd>=1?'':' disabled'),'flex:1;color:#ff9a4f')}</div>`:`<div class=dim style="margin-top:8px">🔥 La fundición para convertirlo en lingote está en Estación Umbral.</div>`;
@@ -121,7 +126,7 @@ function hubBase(){const d=ship.docked,i=BASES.indexOf(d);
 <div class=card2 style="border-color:${d.col}"><span class=badge style="color:${d.col}">${d.tag||''}</span><div style="margin-top:8px">${BLORE[d.n]||d.info||''}</div>${d.info&&BLORE[d.n]?`<div class=dim style="margin-top:6px">${d.info}</div>`:''}</div>
 <div class=card2><b>DATOS</b>${kv('Tipo',d.small?'Estación':'Base')}${kv('Distancia a Base Alfa',dist+' km')}${kv('Pago por minerales','×'+d.mult,d.mult>1?'#7dff9b':'')}${kv('Radio de atraque',d.r+' u')}</div>
 <div class=card2><b>SERVICIOS</b>${sv.map(s=>kv(s[0],s[1])).join('')}</div>`}
-const hubSig=()=>hubTab+'|'+mkSel+'|'+MKV+'|'+(ship.inv?Object.keys(ship.inv).map(k=>k+Math.floor(ship.inv[k])).join():'')+'|'+Math.floor(ingTot())+'|'+(QX.mk&&QX.mk.news?QX.mk.news.t:0);
+const hubSig=()=>hubTab+'|'+mkSel+'|'+MKV+'|'+(hubTab==='fleet'?Math.floor(time)+'|'+flSel+flMin+flMode:'')+'|'+(QX.wh?JSON.stringify(QX.wh):'')+'|'+(ship.inv?Object.keys(ship.inv).map(k=>k+Math.floor(ship.inv[k])).join():'')+'|'+Math.floor(ingTot())+'|'+(QX.mk&&QX.mk.news?QX.mk.news.t:0);
 /* ---------- barra superior ---------- */
 let hubEl=null,hubSg='';
 function hubBar(){if(hubEl)return hubEl;hubEl=document.createElement('div');hubEl.id='hubTop';document.body.appendChild(hubEl);
@@ -133,11 +138,11 @@ function hubBar(){if(hubEl)return hubEl;hubEl=document.createElement('div');hubE
 .mkl{max-height:calc(100vh - 260px);overflow:auto;padding-right:4px}@media(max-width:720px){.mkl{max-height:300px}}
 .mkh{margin:10px 0 4px;color:#7fa8c8;font-size:11px;letter-spacing:.18em}.mkh:first-child{margin-top:0}
 .mkrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin:3px 0;padding:7px 8px;background:rgba(10,20,34,.8);border:1px solid #1d3550;color:#cfe8ff;font:inherit;cursor:pointer}.mkrow.on{border-color:#ffd166;background:#16263a}
-.mkrow i{width:10px;height:10px;border-radius:50%;flex:none}.mkrow small{font-size:10px;opacity:.9}`;document.head.appendChild(st);
+.whr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #12243a;font-size:12px}.whr:first-child{border-top:0}.whr i{width:10px;height:10px;border-radius:50%;flex:none}.whb{margin-left:auto;display:flex;gap:6px}.whb .sq{position:static;padding:5px 9px;font-size:11px;margin:0}.fls{margin:8px 0}.mkrow i{width:10px;height:10px;border-radius:50%;flex:none}.mkrow small{font-size:10px;opacity:.9}`;document.head.appendChild(st);
   hubEl.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.dataset.hub)hubGo(b.dataset.hub)});return hubEl}
 function hubSync(){const on=!!ship.docked&&(state==='hangar'||state==='ship');const el=hubBar();if(!on){if(el.style.display!=='none')el.style.display='none';hubSg='';return}
   const cur=state==='hangar'?'hangar':hubTab,sg=cur+'|'+ship.docked.n+'|'+Math.floor(ship.cred);if(sg===hubSg)return;hubSg=sg;el.style.display='flex';
-  const t=[['hangar','⌂ HANGAR'],['nave','⚙ NAVE'],['econ','◈ ECONOMÍA'],['base','ⓘ BASE']];
+  const t=[['hangar','⌂ HANGAR'],['nave','⚙ NAVE'],['upg','✚ MEJORAS'],['fleet','✈ FLOTA'],['econ','◈ ECONOMÍA'],['wh','▣ ALMACÉN'],['base','ⓘ BASE']];
   el.innerHTML=`<span class=bn style="color:${ship.docked.col}">${ship.docked.n.toUpperCase()}</span>`+t.map(a=>`<button data-hub="${a[0]}" class="${a[0]===cur?'on':''}">${a[1]}</button>`).join('')+`<span class=cr>◈ ${Math.floor(ship.cred)} cr</span>`}
 function hubGo(t){if(!ship.docked)return;
   if(t==='hangar'){if(state==='hangar')return;if(state==='ship'){if(prevS==='hangar')closeShip();else{shT=0;shDir=1;setState('play');openHangar()}}return}
@@ -157,3 +162,65 @@ function baseInterior(b){const c=b.col||'#4fd1ff',sm=!!b.small,t=time;g.fillStyl
   g.fillStyle=c+'33';g.fillRect(0,fy-4,W,4);for(let x=-40;x<W;x+=34){g.fillStyle='rgba(255,209,102,.16)';g.beginPath();g.moveTo(x,fy+8);g.lineTo(x+16,fy+8);g.lineTo(x+6,fy+16);g.lineTo(x-10,fy+16);g.closePath();g.fill()}   // franja de seguridad
   g.fillStyle='rgba(8,14,24,.85)';for(const[fx,fw,fh]of[[.05,.1,.16],[.86,.1,.2]]){g.fillRect(W*fx,fy-H*fh,W*fw,H*fh);g.fillStyle=c+'55';g.fillRect(W*fx+6,fy-H*fh+8,W*fw-12,3);g.fillStyle='rgba(8,14,24,.85)'}   // consolas
   const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');g.fillStyle=vg;g.fillRect(0,0,W,H)}
+
+/* ================= ALMACÉN ================= */
+function whMove(dir,k,q){const d=ship.docked;if(!d)return;
+  if(k==='sc'){const have=dir==='dep'?Math.floor(ship.scrap||0):whGet('sc'),n=q==='all'?have:Math.min(+q||0,have);if(n<=0)return;if(dir==='dep'){ship.scrap-=n;whAdd('sc',n)}else{ship.scrap=(ship.scrap||0)+n;whAdd('sc',-n)}return}
+  const have=dir==='dep'?mkCargo(k):whGet(k);let n=q==='all'?have:Math.min(+q||0,have);if(dir==='ret')n=Math.min(n,Math.floor(T.cargo-ship.ore));if(n<=0)return n===0&&dir==='ret'?toast('Bodega llena'):0;
+  if(dir==='dep'){ship.inv[k]-=n;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,ship.ore-n);whAdd(k,n)}else{whAdd(k,-n);ship.inv[k]=(ship.inv[k]||0)+n;ship.ore+=n}}
+function hubWh(){mkInit();const d=ship.docked,chip=(t,v)=>`<span class=cc>${t}<b>${v}</b></span>`;
+  let val=0;for(const k in MIN)val+=(mkCargo(k)+whGet(k))*mkSellP(k,d);for(const k in MIN)val+=((QX.ig||{})[k]||0)*mkSellP('i_'+k,d);
+  const row=(k,I)=>{const c=mkCargo(k),w=whGet(k);if(!c&&!w)return'';return `<div class=whr><i style="background:${I.col}"></i><b style="flex:1;min-width:90px">${I.n}</b><span class=dim>Nave ${c}</span><span>Almacén <b>${w}</b></span><span class=whb>${c?sq('Guardar 1','data-mk="wh:dep:'+k+':1"')+sq('todo','data-mk="wh:dep:'+k+':all"'):''}${w?sq('Retirar 1','data-mk="wh:ret:'+k+':1"')+sq('todo','data-mk="wh:ret:'+k+':all"'):''}</span></div>`};
+  const raw=Object.keys(MIN).map(k=>row(k,mkItem(k))).join(''),ings=Object.keys(MIN).filter(k=>((QX.ig||{})[k]||0)>0).map(k=>`<div class=whr><i style="background:${MIN[k][1]}"></i><b style="flex:1">${mkItem('i_'+k).n}</b><span>Almacén <b>${QX.ig[k]}</b></span><span class=dim>≈ ${mkFmt(mkSellP('i_'+k,d))} cr/ud</span></div>`).join('');
+  const sc=Math.floor(ship.scrap||0),ws=whGet('sc');
+  return `<div class=sh1><b style="color:#7dc8ff;letter-spacing:.12em">ALMACÉN COMÚN</b>${sq('Cerrar [N]','data-x=1')}</div>
+<div class=res>${chip('Crudo ',whTot()-ws)}${chip('Lingotes ',ingTot())}${chip('Chatarra ',ws)}${chip('Valor aprox. ',Math.floor(val)+' cr')}</div>
+<div class=card2 style="margin-top:8px"><div class=dim>Es el mismo almacén en todas las bases y estaciones. Lo que compras en ECONOMÍA y los lingotes que fundes llegan aquí. Desde aquí puedes mover mineral a tu bodega (${Math.floor(ship.ore)}/${T.cargo}) y guardarlo de nuevo.</div></div>
+<div class=card2><b>MINERAL CRUDO</b><div style="margin-top:6px">${raw||'<div class=dim>No tienes mineral crudo.</div>'}</div></div>
+<div class=card2><b>LINGOTES (cocinados)</b><div style="margin-top:6px">${ings||'<div class=dim>Aún no tienes lingotes. Se funden en Estación Umbral (pestaña ECONOMÍA).</div>'}</div></div>
+<div class=card2><b>CHATARRA</b><div class=whr style="margin-top:6px"><i style="background:#cfe8ff"></i><b style="flex:1">Chatarra</b><span class=dim>Nave ${sc}</span><span>Almacén <b>${ws}</b></span><span class=whb>${sc?sq('Guardar 1','data-mk="wh:dep:sc:1"')+sq('todo','data-mk="wh:dep:sc:all"'):''}${ws?sq('Retirar 1','data-mk="wh:ret:sc:1"')+sq('todo','data-mk="wh:ret:sc:all"'):''}</span></div><div class=dim style="margin-top:4px">La chatarra de tu nave es la que se usa para reparar.</div></div>`}
+/* ================= MEJORAS (comprar) — se equipan en NAVE ================= */
+const upName=k=>(typeof UPN!=='undefined'&&UPN[k])||NM[k]||k;
+function upBuy(k){const d=ship.docked;if(!d)return;if(!d.small)return toast('Mejoras solo en estaciones: Cobre, Vega o Nova');T.lv=T.lv||{};T.pk=T.pk||{};const lt=(T.lv[k]||0)+(T.pk[k]||0);if(lt>=3)return;const c=UP[k].c*(lt+1);
+  if(ship.cred<c)return toast('Créditos insuficientes: faltan '+(c-ship.cred));ship.cred-=c;T.pk[k]=(T.pk[k]||0)+1;qEv('upg');toast('Comprada: '+upName(k)+' nivel '+(lt+1)+' → equípala en NAVE')}
+function upAct(a,k){try{if(a==='buy')upBuy(k);else if(typeof impAct==='function'&&(a==='hull'||a==='kit'))impAct(a);saveGame()}catch(e){console.warn('[mejoras]',e)}}
+function hubUpg(){const d=ship.docked,stn=!!d.small;T.lv=T.lv||{};T.pk=T.pk||{};let h=`<div class=sh1><b style="color:#7dff9b;letter-spacing:.12em">MEJORAS · ${T.n.toUpperCase()}</b>${sq('Cerrar [N]','data-x=1')}</div>
+<div class=res><span class=cc>◈ <b>${Math.floor(ship.cred)} cr</b></span></div>
+<div class=card2 style="margin-top:8px"><div class=dim>Aquí solo se COMPRAN las mejoras de la nave que llevas puesta. Después hay que EQUIPARLAS en NAVE → el componente → MEJORAR. ${stn?'':'En esta base no se venden: están en Estación Cobre, Vega y Nova.'}</div></div>`;
+  for(const k of Object.keys(UP)){const l=T.lv[k]||0,pk=T.pk[k]||0,lt=l+pk,full=lt>=3,c=full?0:UP[k].c*(lt+1),us=UP[k].s(),ok=!full&&ship.cred>=c;
+    h+=`<div class=card2><div style="display:flex;align-items:center;gap:8px"><b>${upName(k)}</b><span class=badge style="margin-left:auto">nivel ${l} equipado${pk?' · '+pk+' en inventario':''} / 3</span></div>${kv(us[0],us[1]+(full?'':' → '+us[2]))}`+
+      (pk?`<div style="color:#7dff9b;margin-top:4px">Tienes ${pk} sin equipar: ve a NAVE → ${NM[k]||upName(k)}.</div>`:'')+
+      (full?'<div class=dim style="margin-top:4px">Nivel máximo (equipado + inventario).</div>':kv('Coste',c+' cr',ok?'':'#ff6b6b')+(stn?sq('Comprar mejora (nivel '+(lt+1)+')','data-mk="up:buy:'+k+'"'+(ok?'':' disabled'),'width:100%;margin-top:6px'):''))+`</div>`}
+  if(typeof impStore==='function')h+=impStore();
+  return h}
+/* ================= FLOTA ================= */
+const flOwn=()=>wing.filter(w=>w.own&&w.hp>0),flId=w=>w.fid||(w.fid=++FLID);
+function flAct(p){const w=wing.find(q=>q.fid===+p[2]);
+  if(p[1]==='sel'){flSel=+p[2];return}if(p[1]==='min'){flMin=p[3];return}if(p[1]==='mode'){flMode=p[3];return}
+  if(!w)return;
+  if(p[1]==='go')fmStart(w,flMin,flMode);else if(p[1]==='stop')fmStop(w);
+  else if(p[1]==='call'){wCall(w)}
+  else if(p[1]==='base'){const b=BASES[+p[3]];if(b)sendW(w,b)}
+  else if(p[1]==='kit'){if((QX.fli|0)<1)return toast('No tienes refuerzos de flota: cómpralos en MEJORAS (Base Omega)');if(w.imp)return;QX.fli--;w.imp=1;w.max+=100;w.hp=Math.min(w.max,w.hp+100);toast('✔ '+w.n+' reforzada: +100 de resistencia y a salvo de la implosión')}
+  try{saveGame()}catch(e){}}
+function hubFleet(){const L=flOwn(),d=ship.docked;let h=`<div class=sh1><b style="color:#ffb86b;letter-spacing:.12em">FLOTA · ${L.length}/4 NAVES</b>${sq('Cerrar [N]','data-x=1')}</div>`;
+  if(!L.length)return h+`<div class=card2 style="margin-top:8px">Aún no tienes naves en tu flota. Repara naves averiadas con el Técnico o recluta guardias; aparecerán aquí.</div>`;
+  if(!L.some(w=>flId(w)===flSel))flSel=flId(L[0]);
+  h+=`<div class=card2 style="margin-top:8px"><div class=dim>Aquí diriges tu flota. Una nave enviada a minar sale de verdad desde donde esté (contigo o en otra base), vuela, mina, lleva la carga a la base y te ingresa el dinero. Si la atacan y su casco baja del 40% regresa a la base; puede perderse.</div></div>
+<div class=fls>${L.map(w=>{const t=TYPES[w.ti],f=flId(w),m=w.fm&&w.st==='mine';return `<button class="mkrow${f===flSel?' on':''}" data-mk="fl:sel:${f}"><i style="background:${t.col}"></i><span style="flex:1;min-width:0"><b>${w.n}</b><small style="display:block">${t.n} · ${m?fmLbl(w):wLbl(w)}</small></span><span style="min-width:48px;text-align:right"><b>${Math.round(w.hp/w.max*100)}%</b></span></button>`}).join('')}</div>`;
+  const w=L.find(q=>flId(q)===flSel),t=TYPES[w.ti],f=flId(w),m=w.fm;
+  h+=`<div class=card2><div style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;background:${t.col};display:inline-block"></i><b style="font-size:16px">${w.n}</b><span class=badge style="margin-left:auto">${t.n}</span></div>
+<div class=bb style="margin:8px 0"><b style="width:${Math.round(w.hp/w.max*100)}%;background:#7dff9b"></b></div>${kv('Estado',w.fm&&w.st==='mine'?fmLbl(w):wLbl(w))}${kv('Posición',whereIs(w)+' · '+km(dist(w,ship))+' de ti')}${kv('Bodega',(t.cargo||0)+' uds')}${kv('Refuerzo anti-implosión',w.imp?'✔ instalado':'no instalado',w.imp?'#7dff9b':'#ffb347')}`;
+  if(m&&w.st==='mine')h+=`${kv('Mineral',MIN[m.k][0])}${kv('Modo',FMM[m.mode][0])}${kv('Carga',m.cargo+' / '+m.cap)}${kv('Ganado en esta ruta',m.earn+' cr','#ffd166')}${kv('Viajes completados',m.cyc)}${m.stop?'<div class=dim style="margin-top:6px">Terminando la ruta: descargará y se quedará en la base.</div>':sq('Terminar ruta (descarga y para)','data-mk="fl:stop:'+f+'"','width:100%;margin-top:8px')}`;
+  h+=`<div style="display:flex;gap:6px;margin-top:8px">${sq('Llamar a mi lado','data-mk="fl:call:'+f+'"','flex:1')}${!w.imp&&(QX.fli|0)>0?sq('Reforzar ('+QX.fli+' kits)','data-mk="fl:kit:'+f+'"','flex:1;color:#7de3ff'):''}</div>
+<div class=dim style="margin:8px 0 4px">Enviar a una base:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${BASES.map((b,i)=>b.n==='Base Beta'?'':sq(b.n.replace('Base ','').replace('Estación ',''),'data-mk="fl:base:'+f+':'+i+'"','flex:none;padding:6px 10px')).join('')}</div></div>`;
+  /* enviar a minar */
+  const lv=fmLv(),mins=Object.keys(MIN);
+  const need=k=>MIN[k][3]||0,okK=k=>need(k)<=lv,fs=fmFieldsFor(flMin,w),fld=fs[0];
+  h+=`<div class=card2 style="border-color:#ffb86b"><b style="color:#ffb86b">MISIÓN DE MINERÍA</b><div class=dim style="margin:6px 0 4px">Mineral a extraer:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${mins.map(k=>sq(MIN[k][0]+(okK(k)?'':' 🔒'),'data-mk="fl:min:'+f+':'+k+'"'+(okK(k)?'':' disabled'),'flex:none;padding:6px 10px;'+(k===flMin?'border-color:'+MIN[k][1]+';color:#fff':''))).join('')}</div>
+<div class=dim style="margin:8px 0 4px">Qué hacer con la carga:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${Object.keys(FMM).map(k=>sq(FMM[k][0],'data-mk="fl:mode:'+f+':'+k+'"','flex:none;padding:6px 10px;'+(k===flMode?'border-color:#ffb86b;color:#fff':''))).join('')}</div><div class=dim style="margin-top:4px">${FMM[flMode][1]}</div>`;
+  const spu=fmSpu(flMin,fld),cap=t.cargo||30;
+  h+=(fld?kv('Campo elegido',fld.n+' · '+km(dist(w,fld))):'<div style="color:#ff6b6b;margin-top:6px">No hay campo accesible para este mineral'+(flMin&&fs.blocked?' (queda fuera del aro: necesita refuerzo anti-implosión)':'')+'.</div>')+kv('Ritmo estimado',fld?(60/spu).toFixed(1)+' uds/min':'—')+kv('Llenar bodega',fld?Math.ceil(cap*spu/60)+' min':'—')+kv('Precio actual',mkFmt(mkMid(flMin))+' cr/ud');
+  const act=!!w.fm&&w.st==='mine';
+  h+=sq(act?'Ya está en misión':'Enviar a minar '+MIN[flMin][0].toLowerCase(),'data-mk="fl:go:'+f+'"'+(act||!fld||!okK(flMin)?' disabled':''),'width:100%;margin-top:8px;color:#ffb86b')+`</div>`;
+  return h}
