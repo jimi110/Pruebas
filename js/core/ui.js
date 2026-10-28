@@ -30,7 +30,7 @@ $('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)
 pickType(0,true);
 $('bFly').onclick=()=>{ship.disc=0;setState('play');toast('Toca la pantalla para moverte · toca el minimapa para abrir el mapa')};
 $('bMap').onclick=toggleMap;$('bX').onclick=toggleMap;$('bGo').onclick=confirmGo;
-$('bHan').onclick=openHangar;$('bTg').onclick=cycleLock;$('bShip').onclick=$('bHS').onclick=openShip;
+$('bHan').onclick=openHangar;$('bTg').onclick=cycleLock;$('bShip').onclick=$('bHS').onclick=openShipN;
 function cruise(){if(state!=='map'||!sel)return;if(ship.wreck){toast('Nave inutilizada: no puedes navegar. Pide ayuda');return}if(dist(ship,sel)<120){toast('Ya estás en ese punto');setState('play');return}ship.dest={x:sel.x,y:sel.y};qEv('nav');setState('play')}
 $('bCr').onclick=cruise;$('bCen').onclick=()=>{mc={x:ship.x,y:ship.y};wmapF=1};
 function cycleLock(){if(ship.dead)return;const L=npcs.filter(n=>(n.team==='e'||(n.boss&&n.evs&&n.hp>0))&&dist(n,ship)<1500).sort((a,b)=>dist(a,ship)-dist(b,ship));if(!L.length){ship.lock=ship.orbit=null;return toast('Sin enemigos cerca')}const i=L.indexOf(ship.lock);ship.lock=L[(i+1)%L.length];toast('Objetivo fijado')}
@@ -105,6 +105,7 @@ function fix(k){if(ship.dead>0||ship.wreck)return toast('Nave inutilizada: no pu
   if(ship.docked){const sc=Math.min(ship.scrap|0,c),cr=c-sc;if(ship.cred<cr)return toast('Falta material: '+(cr-ship.cred)+' créditos o chatarra');ship.scrap-=sc;ship.cred-=cr;sv(k,gm(k));qEv('fix');return toast('✔ '+NM[k]+': reparación completada')}
   const q=Math.ceil(c*1.5);if(ship.scrap<q)return toast('Falta chatarra: necesitas '+q+' y tienes '+(ship.scrap|0));ship.scrap-=q;rq.push({k,t:0,tot:rt(k),v0:gv(k)});toast('Reparación iniciada: '+NM[k]+' (~'+rt(k)+' s)')}
 function tickRep(dt){if(!rq.length)return;rq=stepRep(rq,gv,sv,gm,dt,j=>{qEv('fix');toast('✔ '+NM[j.k]+': reparación completada')})}
+function openShipN(){if(typeof hubTab!=='undefined')hubTab='nave';openShip()}
 function openShip(){if(state!=='play'&&state!=='hangar')return;prevS=state;shT=prevS==='play'?0:1;shDir=1;setState('ship');renderShip()}
 function closeShip(){if(prevS==='play'&&shT>0){shDir=-1;$('shipP').classList.add('hide')}else setState(prevS)}
 const sq=(l,a,x)=>`<button class="sq" ${a} style="position:static;padding:8px 10px;${x||''}">${l}</button>`;
@@ -168,7 +169,7 @@ function toggleMap(){if(state==='warp'){if(wmap){wmap=0;zoom=zp;$('panel').class
   if(state==='map'){sel=null;zoom=zp;setState('play')}else if(state==='play'){sel=null;zp=zoom;mc={x:ship.x,y:ship.y};zoom=Math.min(zoom,.02);setState('map');mapT=time;qEv('map');updInfo()}}
 addEventListener('keydown',e=>{const c=e.code;
   if(c==='KeyM')toggleMap();else if(c==='Escape'&&mapV())toggleMap();
-  else if(c==='Enter'&&state==='map')confirmGo();else if(c==='KeyN'){if(state==='ship')closeShip();else openShip()}else if(c==='KeyH'&&state==='play')openHangar();else if(c==='KeyT'&&state==='play')cycleLock();else if(c==='KeyF'&&state==='play')wToggle();else if(c==='KeyI'&&state!=='warp'&&state!=='map'&&state!=='menu')invToggle();else if(state==='play'&&(c==='KeyW'||c==='ArrowUp'))thrSet(.1);else if(state==='play'&&(c==='KeyS'||c==='ArrowDown'))thrSet(-.1);else if(state==='play'&&(c==='KeyX'||c==='Space'))brakeNow();else if(c==='Escape'){if(state==='play'||state==='hangar')openPause();else if(state==='ship')closeShip()}});
+  else if(c==='Enter'&&state==='map')confirmGo();else if(c==='KeyN'){if(state==='ship')closeShip();else openShipN()}else if(c==='KeyH'&&state==='play')openHangar();else if(c==='KeyT'&&state==='play')cycleLock();else if(c==='KeyF'&&state==='play')wToggle();else if(c==='KeyI'&&state!=='warp'&&state!=='map'&&state!=='menu')invToggle();else if(state==='play'&&(c==='KeyW'||c==='ArrowUp'))thrSet(.1);else if(state==='play'&&(c==='KeyS'||c==='ArrowDown'))thrSet(-.1);else if(state==='play'&&(c==='KeyX'||c==='Space'))brakeNow();else if(c==='Escape'){if(state==='play'||state==='hangar')openPause();else if(state==='ship')closeShip()}});
 
 /* ===== MAPA: selección de destino ===== */
 const SYSN='Sistema Alfa',SYSZ0=.0075,SYSZ1=.0105;

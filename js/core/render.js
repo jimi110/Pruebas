@@ -120,7 +120,7 @@ function drawMini(){const m=mm(),cx=m.x+m.w/2,cy=m.y+m.h/2,s=m.w/2/m.r,X=x=>cx+(
   neb(4400,-4400,11000,'rgba(50,90,200,.22)');neb(16000,-7000,9000,'rgba(255,120,70,.16)');neb(-12000,9000,11000,'rgba(120,80,200,.14)');neb(8000,22000,10000,'rgba(60,150,170,.12)');
   for(const[o,r,c]of[[A,C.safeR,['rgba(79,209,255,.09)','rgba(79,209,255,.3)']],[B,1500,['rgba(255,90,70,.09)','rgba(255,110,90,.3)']]]){blobPath(X(o.x),Y(o.y),r*s,o.x*.0013+o.y*.0007);g.fillStyle=c[0];g.fill();g.strokeStyle=c[1];g.lineWidth=1;g.stroke()}
   for(const F of FIELDS){if(F.ring?Math.abs(Math.hypot(ship.x,ship.y)-F.rr(Math.atan2(ship.y,ship.x)))>m.r*1.45+3000:!inR(F,F.r))continue;fPoly(F,X,Y);g.fillStyle='rgba('+F.col+',.12)';g.fill('evenodd');g.strokeStyle='rgba('+F.col+',.5)';g.lineWidth=1;g.stroke();if(!F.ring)txt(F.n.toUpperCase(),X(F.x),Y(F.y)+3,'rgba('+F.col+',.9)','center',7)}
-  gevDraw(X,Y,s,0);RGH(r=>r.drawMini&&r.drawMini(X,Y,s));
+  gevDraw(X,Y,s,0);RGH(r=>r.drawMini&&r.drawMini(X,Y,s,m));
   for(const o of ANOM){if(!inR(o))continue;if(o.found||MAPALL){g.beginPath();g.arc(X(o.x),Y(o.y),Math.max(2,o.r0*s),0,TAU);g.fillStyle='rgba('+o.col+',.35)';g.fill()}else{g.fillStyle='rgba(255,255,255,.6)';g.fillRect(X(o.x+o.jx)-1.5,Y(o.y+o.jy)-1.5,3,3)}}
   g.fillStyle='rgba(190,200,220,.75)';for(const a of asts){const x=X(a.x),y=Y(a.y);if(x>m.x&&x<m.x+m.w&&y>m.y&&y<m.y+m.h)g.fillRect(x-1,y-1,2,2)}
   for(const c of cmts){const x=X(c.x),y=Y(c.y),v=Math.hypot(c.vx,c.vy)||1;g.fillStyle='rgba('+CK[c.k].c+',1)';g.beginPath();g.arc(x,y,2.5,0,TAU);g.fill();g.strokeStyle='rgba('+CK[c.k].c+',.5)';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y);g.lineTo(x-c.vx/v*9,y-c.vy/v*9);g.stroke()}
@@ -157,7 +157,7 @@ function hud(){const x=14,bw=Math.min(230,W*.4);drawMini();
 function render(){
   if(W<1||H<1)return;
   if(state==='hangar'||(state==='pause'&&pauseFrom==='hangar'))drawHangar();else if(mapV()){if(state==='warp'){if(wmapF)mc={x:ship.x,y:ship.y};const s0=state;state='map';drawMap();state=s0;txt('SALTO EN CURSO → '+warp.dest.n.toUpperCase(),W/2,18,'#7dff9b','center',12)}else drawMap()}else if(state==='ship')shipView();else if(aiW&&state==='play')allyView();else drawWorld();
-  vHud(()=>{if(hgL&&state==='play')drawHgL();if(state!=='warp'&&state!=='menu'&&state!=='ship'&&!aiW)txt('◈ '+ship.cred+' cr',W/2,26,'#ffd166','center',19);
+  vHud(()=>{if(hgL&&state==='play')drawHgL();if(state!=='warp'&&state!=='menu'&&state!=='ship'&&state!=='hangar'&&!aiW)txt('◈ '+ship.cred+' cr',W/2,26,'#ffd166','center',19);
   toasts.forEach((t,i)=>{g.globalAlpha=clamp(t.life,0,1);txt(t.t,state==='ship'&&!(W<720&&W<H*1.34)?(W-Math.min(390,W*.52))/2:W/2,state==='ship'?(W<720&&W<H*1.34?H*.5-34:H-30)-(toasts.length-1-i)*22:Math.min(H*.15,80)+i*22,'#cfe8ff','center',16)});g.globalAlpha=1})}
 
 /* ===== MEJORAS: km, audio, gráficos ===== */
