@@ -78,7 +78,7 @@ UP.crt={c:140,ok:()=>isI([2]),s:()=>['Probabilidad de crítico (daño x2)',pc(cr
 const XUP={eng:['ovc','afb'],min:['tal'],shd:['tfd'],wpn:['crt']},upl=k=>[...(UPS[k]||[k]),...(XUP[k]||[]).filter(q=>UP[q].ok())];
 const UPS={jmp:['jmp','jmr','jmv']},UPN={ovc:'Eficiencia de sobrecarga',afb:'Postcombustión',tal:'Taller de a bordo',tfd:'Campo reparador',crt:'Fuego crítico',jmp:'Alcance de salto',jmr:'Recarga de energía',jmv:'Velocidad de salto'},jrg=j=>(100/Math.max(j,.01)-30)*650*C.jr;
 const upc=k=>{T.lv=T.lv||{};return UP[k].c*((T.lv[k]||0)+1)};
-function buy(k){if(!ship.docked||!ship.docked.small)return toast('Mejoras solo en estaciones: Cobre, Vega o Nova');T.lv=T.lv||{};const l=T.lv[k]||0;if(l>=3)return;const c=upc(k);if(ship.cred<c)return toast('Créditos insuficientes: faltan '+(c-ship.cred));ship.cred-=c;T.lv[k]=l+1;UP[k].a();qEv('upg');toast('Mejora comprada: '+(UPN[k]||NM[k])+' nivel '+(l+1))}
+function buy(k){/* EQUIPAR una mejora ya comprada (se compra en la pestaña MEJORAS) */if(!ship.docked)return toast('Equipa las mejoras atracado en una base');T.lv=T.lv||{};T.pk=T.pk||{};if(!(T.pk[k]>0))return toast('No tienes esa mejora: cómprala en la pestaña MEJORAS');const l=T.lv[k]||0;if(l>=3)return;T.pk[k]--;T.lv[k]=l+1;UP[k].a();toast('Mejora equipada: '+(UPN[k]||NM[k])+' nivel '+(l+1))}
 let prevS='play',selP='hull',SL={cx:0,cy:0,sc:4};
 const IP={hull:'M12 2.5 20 7v9.5L12 21.5 4 16.5V7z M12 7v10',shd:'M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z M7.5 12a4.5 4.5 0 0 1 4.5-4.5',eng:'M12 3c3 4 5 7 5 10a5 5 0 0 1-10 0c0-3 2-6 5-10z M12 13v5',eg2:'M5 7l7-4 7 4 M5 13l7-4 7 4 M5 19l7-4 7 4',wpn:'M12 2v6 M12 16v6 M2 12h6 M16 12h6 M12 9a3 3 0 1 0 .01 0',min:'M3 21l8-8 M13 3l8 8-3 3-8-8z',jmp:'M13 2 5 14h6l-1 8 9-12h-6z'};
 const P2={};for(const q in IP)P2[q]=new Path2D(IP[q]);
@@ -131,7 +131,7 @@ ${stc}<div class=icons>${PR.map(p=>{const q=stT(p[0])[1];return `<button class="
  else if(!up)h+='<div class=dim>No hay mejoras disponibles para este componente.</div>';
  else{for(const k2 of upl(k)){const up=UP[k2],l=(T.lv||{})[k2]||0,uc=upc(k2),us=up.s();h+=(k2===k?'':'<div style="border-top:1px solid #1d3550;margin:12px 0 8px"></div>')+`<b>${UPN[k2]||'Mejora'} · nivel ${l} / 3</b>`+kv(us[0],us[1]+(l>=3?'':' → '+us[2]));
   if(l>=3)h+='<div style="color:#7dff9b;margin-top:6px">Nivel máximo</div>';
-  else{const ok=cr0>=uc;h+=`<div class=cost><span class=dim>Coste</span>${chip('cred',uc,ok)}</div>`+(stn?(ok?'':'<div style="color:#ff6b6b">Créditos insuficientes</div>')+sq('Comprar mejora','data-u="'+k2+'"'+(ok?'':' disabled'),'width:100%;margin-top:8px'):`<div class=dim>Se compra en Estación Cobre, Vega o Nova${d?' (no en '+d.n+')':''}.</div>`)}}}
+  else{const pk=((T.pk||{})[k2])||0;h+=pk>0?(d?'<div style=\"color:#7dff9b;margin-top:6px\">Tienes '+pk+' sin equipar (nivel '+(l+1)+')</div>'+sq('Equipar mejora','data-u=\"'+k2+'\"','width:100%;margin-top:8px'):'<div class=dim>Tienes '+pk+' sin equipar: atraca en una base para equiparla.</div>'):'<div class=dim>Cómprala en la pestaña MEJORAS de una estación (Cobre, Vega o Nova) y equípala aquí.</div>'}}}
  h+='</div>';
  if(rq.length)h+=`<div class=card2><b>COLA DE REPARACIONES</b>`+rq.map(j=>`<div style="margin-top:6px">${kv(NM[j.k],'<span data-pt="'+j.k+'">'+Math.floor(j.t/j.tot*100)+'% · quedan '+Math.ceil(j.tot-j.t)+' s</span>','#c792ff')}<div class=bb><b data-pb="${j.k}" style="width:${j.t/j.tot*100}%;background:#c792ff"></b></div></div>`).join('')+'</div>';
  if(k==='wpn')h+=wpnCard();if(k==='hull'&&typeof impHullCard==='function')h+=impHullCard();$('shipP').innerHTML=h}

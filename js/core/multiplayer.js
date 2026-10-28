@@ -99,7 +99,7 @@ async function mpExit(){if(MPG.role==='guest'){try{saveGame();await mpPush(true)
 /* ---- estado de las naves ---- */
 /* ---- efectos de la flota (se ven igual para ti y para los demás) ---- */
 function wjCode(w){const j=w.jp;if(!j)return 0;return j.t<j.t1?1+Math.round(clamp(j.t/Math.max(.01,j.t1),0,1)*98):100}
-function mpWg(){const L=wing.filter(w=>w.hp>0).slice(0,8);for(const w of L)if(!w.uid)w.uid=++MPS.wid;return L.map(w=>{const rs=w.rg?WRS.get(w):null;return[w.uid,w.ti,Math.round(w.x),Math.round(w.y),+(w.a||0).toFixed(2),Math.round(clamp(w.hp/w.max,0,1)*100),Math.round(w.vx||0),Math.round(w.vy||0),wjCode(w),w.col==='#ff9a4f'?1:0,rs?(rs===ship?1:(rs.uid||0)+1):0]})}
+function mpWg(){const L=wing.filter(w=>w.hp>0).slice(0,8);for(const w of L)if(!w.uid)w.uid=++MPS.wid;return L.map(w=>{const rs=w.rg?WRS.get(w):null;return[w.uid,w.ti,Math.round(w.x),Math.round(w.y),+(w.a||0).toFixed(2),Math.round(clamp(w.hp/w.max,0,1)*100),Math.round(w.vx||0),Math.round(w.vy||0),wjCode(w),w.col==='#ff9a4f'?1:0,rs?(rs===ship?1:(rs.uid||0)+1):0,w.mb?[Math.round(w.mb[0]),Math.round(w.mb[1])]:0,w.fm&&w.st==='mine'?w.fm.k:0]})}
 function wjDraw(x,y,a,code,vx,vy){if(!code)return;
  if(code<100){const k=clamp((code-1)/98,0,1),o={x:ship.x,y:ship.y,w0:warp};ship.x=x;ship.y=y;warp={t:k,t1:1,te:2,h:a,dest:{n:''}};g.save();g.translate(x,y);g.scale(.55,.55);g.translate(-x,-y);try{warpFx(0)}finally{g.restore();ship.x=o.x;ship.y=o.y;warp=o.w0}return}
  const sp=Math.hypot(vx||0,vy||0),L=Math.min(900,sp*.12),c=Math.cos(a),n=Math.sin(a);g.save();g.globalCompositeOperation='lighter';g.lineCap='round';g.strokeStyle='rgba(90,170,255,.3)';g.lineWidth=9;g.beginPath();g.moveTo(x,y);g.lineTo(x-c*L,y-n*L);g.stroke();g.strokeStyle='rgba(180,235,255,.7)';g.lineWidth=4;g.beginPath();g.moveTo(x,y);g.lineTo(x-c*L,y-n*L);g.stroke();g.restore()}
@@ -111,7 +111,7 @@ function mpSend(){if(!MP.role||!MP.ch||state==='menu')return;
   if(MP.role==='host')P.w=mpWorld();mpBc('st',P)}}
 function mpOnSt(p){if(!p||!p.id||p.id===MP.id||!MP.role)return;let r=MPR[p.id];if(!r)r=MPR[p.id]={id:p.id,x:p.x,y:p.y,vx:0,vy:0,a:p.a};
  r.n=mpClean(p.n)||'?';r.ti=clamp(p.ti|0,0,TYPES.length-1);r.sx=p.x;r.sy=p.y;r.svx=p.vx||0;r.svy=p.vy||0;r.sa=p.a;r.dk=p.dk;r.dd=p.dd;r.wk=p.wk|0;r.rf=p.rf||0;r.tw=p.tw||0;r.sh=p.sh|0;r.hh=p.h!=null?p.h:1;r.pp=p.pp||null;r.cd=p.cd|0;r.eh=p.eh|0;r.er=p.er|0;r.ek=p.ek|0;{const pw=r.wj;r.wj=p.wj||0;if(pw&&!r.wj)boom(p.x,p.y,24,'#bfefff');else if(pw&&r.wj&&pw[0]<pw[1]&&r.wj[0]>=r.wj[1])boom(r.x,r.y,18,'#e8fbff')}r.bm=p.bm||0;
- if(p.wg){const old=new Map((r.wgs||[]).map(q=>[q.u,q]));r.wgs=p.wg.map(q=>{const o=old.get(q[0])||{x:q[2],y:q[3],a:q[4]};o.u=q[0];o.ti=q[1];o.sx=q[2];o.sy=q[3];o.sa=q[4];o.h=q[5]/100;o.svx=q[6];o.svy=q[7];o.jp=q[8]|0;o.om=q[9];o.hs=q[10]|0;return o})}
+ if(p.wg){const old=new Map((r.wgs||[]).map(q=>[q.u,q]));r.wgs=p.wg.map(q=>{const o=old.get(q[0])||{x:q[2],y:q[3],a:q[4]};o.u=q[0];o.ti=q[1];o.sx=q[2];o.sy=q[3];o.sa=q[4];o.h=q[5]/100;o.svx=q[6];o.svy=q[7];o.jp=q[8]|0;o.om=q[9];o.hs=q[10]|0;o.mb=q[11]||null;o.mk=q[12]||null;return o})}
  r.t=performance.now();mpOnSt2(p)}
 const mpLive=r=>r&&r.sx!=null&&performance.now()-r.t<5000&&!r.dk&&!r.dd;
 /* ayuda entre jugadores: un amigo con Técnico repara tu nave inutilizada; cualquier nave puede remolcarte a la base */

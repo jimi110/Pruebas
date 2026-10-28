@@ -84,7 +84,7 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
 let VX=0,VY=0,VRd=1e9;const vis=(x,y,r=0)=>Math.hypot(x-VX,y-VY)<VRd+r;
 function drawWorld(){VX=cam.x;VY=cam.y;VRd=Math.hypot(W,H)/zoom;g.fillStyle='#02040a';g.fillRect(0,0,W,H);stars();g.save();g.translate(VPx||W/2,VPy||H/2);g.rotate(VR);g.scale(zoom,zoom);g.translate(-cam.x,-cam.y);
   for(const b of BASES){if(!vis(b.x,b.y,b.r*2.2))continue;drawBase(b);txt(b.n.toUpperCase(),b.x,b.y-b.r*1.7,b.col,'center',Math.round(15/zoom))}
-  drawTrl();RGH(r=>r.rimWorld&&r.rimWorld());drawScz();drawSczOld();if(zoom<.3){const u=1/zoom;for(const b of BASES){g.strokeStyle=b.col;g.lineWidth=2*u;g.beginPath();g.arc(b.x,b.y,10*u,0,TAU);g.stroke();txt(b.n,b.x,b.y-18*u,b.col,'center',12*u)}}
+  drawTrl();RGH(r=>r.rimWorld&&r.rimWorld());if(typeof fmDraw==='function')try{fmDraw()}catch(e){}drawScz();drawSczOld();if(zoom<.3){const u=1/zoom;for(const b of BASES){g.strokeStyle=b.col;g.lineWidth=2*u;g.beginPath();g.arc(b.x,b.y,10*u,0,TAU);g.stroke();txt(b.n,b.x,b.y-18*u,b.col,'center',12*u)}}
   for(const o of ANOM){if(!vis(o.x,o.y,o.r+200))continue;const pu=.75+.25*Math.sin(time*2+o.x);
     if(o.t==='w'){drawS(o.x,o.y,time*.15,'c','#8a8f99',1.6,DEAD);drawS(o.x+30,o.y-26,2,'t','#666',1,DEAD);g.strokeStyle=`rgba(${o.col},${o.cd?.12:.45*pu})`;g.setLineDash([6,8]);g.beginPath();g.arc(o.x,o.y,110,0,TAU);g.stroke();g.setLineDash([])}
     else{const q=g.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r);q.addColorStop(0,`rgba(${o.col},${.28*pu})`);q.addColorStop(1,`rgba(${o.col},0)`);g.fillStyle=q;g.fillRect(o.x-o.r,o.y-o.r,o.r*2,o.r*2);
