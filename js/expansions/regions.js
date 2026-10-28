@@ -369,7 +369,7 @@ if(!/[?&]noregions\b/.test(location.search)){loadRegistry();loadEvents()}   // ?
 try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e){}
 
 return{
-  update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,drawMini:(X,Y,s)=>EV(r=>r.drawMini&&r.drawMini(X,Y,s)),
+  update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,drawMini:(X,Y,s,m)=>EV(r=>r.drawMini&&r.drawMini(X,Y,s,m)),inAlfa:(x,y)=>!LIST.some(R=>!R.m.builtin&&inside(R.m,x,y,0)),
   cleared:id=>!!EV(r=>r.cleared(id)),locked:()=>!!EV(r=>r.lockJump()),
   vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),

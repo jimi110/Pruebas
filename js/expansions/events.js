@@ -21,11 +21,10 @@
    ========================================================================== */
 const RGEV=(function(){
 'use strict';
-const VER=4,TAU=Math.PI*2,FR=5400;     // FR = radio del campo de captura del jefe
+const VER=4,TAU=Math.PI*2,FR=3400;     // FR = radio del campo de captura del jefe
 const rnd=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
 const nv=(v,d)=>Number.isFinite(+v)?+v:d;
 const K={boss:100,drone:101,snipe:102,tug:103};            // se guarda en npc.slot (viaja por la sincronización de index)
-const NODES=[[-130,0,30],[30,-74,24],[30,74,24]];  // puntos débiles del jefe (x,y,radio) en coordenadas de la nave
 const HULL=[[170,0],[120,-40],[60,-62],[-20,-85],[-110,-70],[-170,-40],[-190,0],[-170,40],[-110,70],[-20,85],[60,62],[120,40]];
 
 let ctx=null,E=null,G=null;          // E = evento (anfitrión/solitario) · G = copia recibida (invitado)
@@ -42,7 +41,7 @@ const barrier=()=>units().length>=3;
 function cfg(R){
   const c=(R.det&&R.det.event)||{},dg=R.det?R.det.danger:2,nm=R.m.name;
   return{fleet:cl(Math.round(nv(c.fleet,5)),3,8),boss:String(c.boss||('Guardián de '+nm)).slice(0,40),
-    hp:cl(Math.round(nv(c.hp,900*(1+.3*dg))),300,8000),reward:cl(Math.round(nv(c.reward,600)),0,5000),dg,dm:1+.1*dg}}
+    hp:cl(Math.round(nv(c.hp,900*(1+.3*dg))*2),300,16000),reward:cl(Math.round(nv(c.reward,600)),0,5000),dg,dm:1+.1*dg}}
 const countNear=(x,y,r)=>ctx.players().filter(p=>Math.hypot(p.x-x,p.y-y)<r).length||1;
 
 /* ---------- intercepción del salto ---------- */
@@ -58,8 +57,8 @@ function planStop(){
     for(const pad of[-2500,-1200]){for(let i=1;i<=300;i++){const t=i/300,x=A.x+(D.x-A.x)*t,y=A.y+(D.y-A.y)*t;if(ctx.inside(R.m,x,y,pad)){tx=x;ty=y;break}}if(tx!=null)break}
     if(tx!=null){rg=R.id;msg='⚠ La guardia de '+R.m.name+' intercepta tu salto';break}}
   if(tx==null)return;
-  const d=Math.hypot(tx-A.x,ty-A.y);
-  w.dest.x=tx;w.dest.y=ty;w.h=Math.atan2(ty-A.y,tx-A.x);w.te=2.5+Math.max(1.2,d/12000)/wspV();   // mismo perfil de salto: frenada suave hasta el punto de corte
+  const d=Math.hypot(tx-A.x,ty-A.y),ox=D.x,oy=D.y;
+  w.dest.x=tx;w.dest.y=ty;if(typeof wRetarget==='function')wRetarget(ox,oy,tx,ty);w.h=Math.atan2(ty-A.y,tx-A.x);w.te=2.5+Math.max(1.2,d/12000)/wspV();   // mismo perfil de salto: frenada suave hasta el punto de corte
   ixW=1;ixR=rg;toast(msg)}
 
 /* ---------- ciclo del evento (anfitrión / solitario) ---------- */
@@ -76,16 +75,17 @@ function tryStart(){
     const p=pl.find(q=>ctx.inside(R.m,q.x,q.y,-1000));if(p){start(R,p);return}}}
 function start(R,p){
   const c=cfg(R),a0=rnd(0,TAU),ix=ixR===R.id;ixR=null;armed.set(R.id,false);
-  E={id:(Date.now()%1e9)|0,rg:R.id,nm:R.m.name,ph:'arr',t:0,lim:60,n:c.fleet,bn:c.boss,hpB:c.hp,dm:c.dm,dg:c.dg,rw:c.reward,px:p.x,py:p.y,fx:p.x,fy:p.y,np:1,boss:null,gl:0,ix,wv:0,lk:Math.hypot(p.x-ship.x,p.y-ship.y)<9000?1:0,zx:p.x,zy:p.y,hz:{x:ship.x,y:ship.y},tw:[],tl:{}};
+  E={id:(Date.now()%1e9)|0,rg:R.id,nm:R.m.name,ph:'arr',t:0,lim:60,n:c.fleet,bn:c.boss,hpB:c.hp,dm:c.dm,dg:c.dg,rw:c.reward,px:p.x,py:p.y,fx:p.x,fy:p.y,np:1,boss:null,gl:0,ix,wv:0,lk:Math.hypot(p.x-ship.x,p.y-ship.y)<9000?1:0,zx:p.x,zy:p.y,hz:{x:ship.x,y:ship.y},tw:[],tl:{},fld:{x:p.x,y:p.y,r:FR,h:0}};
   for(let i=0;i<c.fleet;i++){const a=a0+i/c.fleet*TAU,r=ix?1300:1700,e=mk('r',p.x+Math.cos(a)*r,p.y+Math.sin(a)*r,{x:p.x,y:p.y});
     e.gv=1;e.rgv=1;e.xd=1;e.cxk='rgg';e.hp=e.max=1e6;e.slot=i/c.fleet*TAU;e.a=a+Math.PI;npcs.push(e)}
   if(typeof cxFind==='function'&&!ctx.isGuest())cxFind({cxk:'rgg'});
   say(ix?'⚠ La guardia de '+R.m.name+' te rodea: no abren fuego':'⚠ Naves desconocidas se acercan a tu posición. No parecen hostiles')}
-function end(c){npcs=npcs.filter(n=>!n.rgv&&!n.rgt&&!(n.slot>=K.boss&&n.slot<=K.tug));for(const w of wing)w.rgt=0;E=null;cool=ctx?ctx.clock()+(c==null?45:c):0}
+function end(c){if(E&&E.pl)armed.set(E.rg,true);   // tras rechazar el combate, al volver a entrar la guardia vuelve a salir al instante
+  npcs=npcs.filter(n=>!n.rgv&&!n.rgt&&!(n.slot>=K.boss&&n.slot<=K.tug));for(const w of wing)w.rgt=0;E=null;cool=ctx?ctx.clock()+(c==null?45:c):0}
 const lockJump=()=>!!E&&((E.tw&&E.tw.length>0)||(['arr','ask','pull','wave','warn','boss'].includes(E.ph)&&!(E.boss&&E.boss.im)));
 function abort(m){if(!E)return;if(m)say(m);end()}
 function decline(){if(!E||E.ph!=='ask')return;
-  E.ph='pull';E.t=0;E.lk=0;E.pl=1;E.tw=[];rearm.set(E.rg,ctx.clock()+30);
+  E.ph='pull';E.t=0;E.lk=0;E.pl=1;E.tw=[];E.fld=null;rearm.set(E.rg,ctx.clock()+30);
   for(const P of roster())towStart(P,'out');
   say('La guardia te devuelve a la frontera de '+E.nm+': cada guardia remolca una de tus naves. Si vuelves a entrar, regresarán')}
 function accept(){if(!E||E.ph!=='ask')return;
@@ -147,21 +147,21 @@ function unitAI(u,dt,pl){
 /* impactos en el jefe (el motor de index no lo toca: es de otro «equipo»): blindaje, puntos débiles y escudo de escolta */
 function hitBoss(bo){
   const c=Math.cos(-bo.a),s=Math.sin(-bo.a),bar=barrier();
-  for(const b of bullets){if(b.life<=0||b.own!=='p'||b.gh)continue;
+  for(const b of bullets){if(b.life<=0||(b.own!=='p'&&b.own!=='w')||b.gh)continue;   // balas del piloto y de su flota
     const dx=b.x-bo.x,dy=b.y-bo.y;if(Math.abs(dx)>230||Math.abs(dy)>230)continue;
     const lx=dx*c-dy*s,ly=dx*s+dy*c;let m=0;
-    for(const[nx,ny,nr]of NODES)if(Math.hypot(lx-nx,ly-ny)<nr){m=2.0;break}
-    if(!m&&(lx/175)**2+(ly/96)**2<1)m=.3;
+    if((lx/175)**2+(ly/96)**2<1)m=1;                  // sin puntos débiles: cualquier impacto en el casco cuenta
     if(!m)continue;
     b.life=0;boom(b.x,b.y,m>1?7:3,m>1?'#ffd166':'#cfd6e6');
     if(!bo.im)bo.hp-=(b.d||5)*m*(bar?.35:1);bo.lh=time}}
 
 /* ---------- remolque: la guardia (o las naves de captura) llevan a cada nave, a la misma velocidad que ella ---------- */
-const CAR=84,CSP=8500,TOWSP=3400;     // CAR: distancia del remolcador a su nave · CSP: velocidad de aproximación (casi un salto) · TOWSP: velocidad de remolque
+const CAR=84,CSP=2600,TOWSP=3400;     // CAR: distancia del remolcador a su nave · CSP: velocidad de aproximación (casi un salto) · TOWSP: velocidad de remolque
 function roster(){const L=[];if(state==='play'&&!ship.docked&&ship.dead<=0)L.push({id:'h',me:1,x:ship.x,y:ship.y});
   if(mpHost()&&typeof MPR!=='undefined')for(const k in MPR){const r=MPR[k];if(typeof mpLive==='function'&&mpLive(r))L.push({id:k,me:0,x:r.x,y:r.y,o:r})}
   return L}
-const members=P=>P.me?1+wing.filter(w=>w.hp>0&&!w.jp).length:1+Math.min(7,((P.o&&P.o.wgs)||[]).filter(q=>!q.jp).length);
+const wOK=w=>w.hp>0&&!w.jp&&!w.fm&&Math.hypot(w.x-ship.x,w.y-ship.y)<4000;   // la flota enviada a minar o lejos no se remolca
+const members=P=>P.me?1+wing.filter(wOK).length:1+Math.min(7,((P.o&&P.o.wgs)||[]).filter(q=>!q.jp).length);
 const FOFF=i=>i?[-70-34*Math.floor((i-1)/2),(i%2?1:-1)*(110+70*Math.floor((i-1)/2))]:[0,0];   // formación: [longitudinal, lateral] respecto al rumbo
 function memberPos(T,i){const o=FOFF(i),c=Math.cos(T.h),s=Math.sin(T.h);return[T.x+c*o[0]-s*o[1],T.y+s*o[0]+c*o[1]]}
 function sayTo(P,m){try{if(P.me)toast(m);else if(typeof mpBc==='function')mpBc('tt',{to:P.id,m})}catch(e){}}
@@ -195,16 +195,16 @@ function towStep(dt){
       T.x=P.x;T.y=P.y;T.h=Math.atan2(T.ty-T.y,T.tx-T.x);const cs=Math.cos(T.h),sn=Math.sin(T.h);let ok=0;
       cr.forEach((c,i)=>{const m=memberPos(T,i),px=m[0]+cs*CAR,py=m[1]+sn*CAR,dx=px-c.x,dy=py-c.y,d=Math.hypot(dx,dy);
         if(d<30){c.x=px;c.y=py;c.vx=c.vy=0;c.a=T.h;ok++}else{const mv=Math.min(d,CSP*dt);c.x+=dx/d*mv;c.y+=dy/d*mv;c.vx=dx/d*CSP;c.vy=dy/d*CSP;c.a=Math.atan2(dy,dx)}});
-      if(ok>=cr.length||T.t>2.5){T.ph='tow';T.t=0;for(const c of cr)c.fled=1;
+      if(ok>=cr.length||T.t>6){T.ph='tow';T.t=0;for(const c of cr)c.fled=1;
         if(T.mode==='back')sayTo(P,'⚠ Naves de captura de la guardia te enganchan: te devuelven al combate')}}
     if(T.ph==='tow'){
       const dx=T.tx-T.x,dy=T.ty-T.y,d=Math.hypot(dx,dy);
       if(d<140||T.t>35){T.ph='done';T.vx=T.vy=0}
-      else{const sp=Math.min(TOWSP,350+T.t*2200,d*2.4+250);T.h=Math.atan2(dy,dx);T.vx=dx/d*sp;T.vy=dy/d*sp;T.x+=T.vx*dt;T.y+=T.vy*dt}
+      else{const bk=T.mode==='back',sp=Math.min(bk?1500:TOWSP,bk?300+T.t*800:350+T.t*2200,d*(bk?1.6:2.4)+250);T.h=Math.atan2(dy,dx);T.vx=dx/d*sp;T.vy=dy/d*sp;T.x+=T.vx*dt;T.y+=T.vy*dt}
       const cs=Math.cos(T.h),sn=Math.sin(T.h);
       cr.forEach((c,i)=>{const m=memberPos(T,i);c.x=m[0]+cs*CAR;c.y=m[1]+sn*CAR;c.vx=T.vx;c.vy=T.vy;c.a=T.h;c.fled=1});   // rígido: misma velocidad que la nave remolcada
       if(T.me&&T.ph!=='done'){ship.x=T.x;ship.y=T.y;ship.vx=ship.vy=0;ship.dest=null;ship.a+=angDiff(ship.a,T.h)*Math.min(1,6*dt);
-        let j=1;for(const w of wing){if(w.hp<=0||w.jp)continue;if(j<T.n){const m=memberPos(T,j);w.x=m[0];w.y=m[1];w.vx=T.vx;w.vy=T.vy;w.a=T.h;w.rgt=1}j++}}}
+        let j=1;for(const w of wing){if(!wOK(w))continue;if(j<T.n){const m=memberPos(T,j);w.x=m[0];w.y=m[1];w.vx=T.vx;w.vy=T.vy;w.a=T.h;w.rgt=1}j++}}}
     if(T.ph==='done')for(const c of T.cr){c.tw=null;c.fled=0;if(c.rgt){c.dep=.001;c.a=T.h+Math.PI}}}
   E.tw=E.tw.filter(T=>T.ph!=='done')}
 /* si alguien intenta huir del combate (oleadas, aviso, jefe o su retirada final), las naves de captura van a por él */
@@ -219,7 +219,7 @@ function guestApply(dt){
   const me=String(typeof MP!=='undefined'?MP.id:''),tw=(G.tw||[]).find(q=>q[0]===me);
   if(tw&&tw[6]){const k=Math.min(1,9*dt),h=tw[5],cs=Math.cos(h),sn=Math.sin(h);
     ship.x+=(tw[1]+tw[3]*.06-ship.x)*k;ship.y+=(tw[2]+tw[4]*.06-ship.y)*k;ship.vx=ship.vy=0;ship.dest=null;ship.a+=angDiff(ship.a,h)*Math.min(1,6*dt);
-    let j=1;for(const w of wing){w.rgt=0;if(w.hp<=0||w.jp)continue;if(j<7){const o=FOFF(j);w.x+=(tw[1]+cs*o[0]-sn*o[1]+tw[3]*.06-w.x)*k;w.y+=(tw[2]+sn*o[0]+cs*o[1]+tw[4]*.06-w.y)*k;w.vx=w.vy=0;w.a=h;w.rgt=1}j++}
+    let j=1;for(const w of wing){w.rgt=0;if(!wOK(w))continue;if(j<7){const o=FOFF(j);w.x+=(tw[1]+cs*o[0]-sn*o[1]+tw[3]*.06-w.x)*k;w.y+=(tw[2]+sn*o[0]+cs*o[1]+tw[4]*.06-w.y)*k;w.vx=w.vy=0;w.a=h;w.rgt=1}j++}
     return}
   clearWingTow();
   if(G.ph==='boss'&&G.fld&&G.fld.h)fieldClamp(G.fld,ship)}
@@ -251,7 +251,7 @@ function step(dt){
     const lead=E.tw.find(T=>T.ph==='tow')||E.tw[0],ex=cs.filter(c=>!c.tw);
     ex.forEach((c,i)=>{const an=i/Math.max(1,ex.length)*TAU+time*.9,bx=lead?lead.x:P0.x,by=lead?lead.y:P0.y,k=Math.min(1,9*dt);c.x+=(bx+Math.cos(an)*380-c.x)*k;c.y+=(by+Math.sin(an)*380-c.y)*k;c.vx=lead?lead.vx:0;c.vy=lead?lead.vy:0;c.a=lead?lead.h:c.a});   // las sobrantes escoltan en formación
     if(!E.tw.length||E.t>45){E.ph='go';E.t=0}}
-  else if(E.ph==='go'){leave();if(E.t>6)end(E.pl?6:45)}
+  else if(E.ph==='go'){leave();if(E.t>3)end(E.pl?2:45)}
   else if(E.ph==='wave'){
     const ul=units();for(const u of ul)unitAI(u,dt,pl);
     if(!pl.some(p=>Math.hypot(p.x-E.px,p.y-E.py)<14000)){E.aw=(E.aw||0)+dt;if(E.aw>20)return abort('La guardia se retira: te has alejado del combate')}else E.aw=0;
@@ -291,9 +291,6 @@ function drawBoss(n,bar){const a=n.a||0,pu=.5+.5*Math.sin(time*3),fl=flashOf(n),
   g.restore();
   shipS(n,'rgb','#6ea8ff',6,im?1:.8);                                                    // acorazado: casco completo con luces, toberas y daños visibles
   g.save();g.translate(n.x,n.y);g.rotate(a);
-  for(const[nx,ny,nr]of NODES){const r=nr*(.85+.2*pu);                                    // puntos débiles
-    if(bar){g.strokeStyle='rgba(255,208,244,.85)';g.lineWidth=2;g.beginPath();g.arc(nx,ny,nr+6,0,TAU);g.stroke();g.fillStyle='rgba(120,100,140,.6)';g.beginPath();g.arc(nx,ny,nr*.7,0,TAU);g.fill()}
-    else{const q=g.createRadialGradient(nx,ny,0,nx,ny,r+10);q.addColorStop(0,'rgba(255,245,190,1)');q.addColorStop(.5,'rgba(255,190,70,.9)');q.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=q;g.beginPath();g.arc(nx,ny,r+10,0,TAU);g.fill();g.strokeStyle='#ffd166';g.lineWidth=2;g.beginPath();g.arc(nx,ny,nr,0,TAU);g.stroke()}}
   if(im){g.strokeStyle='rgba(255,255,255,'+(.5+.4*pu)+')';g.lineWidth=4;g.beginPath();g.arc(0,0,205,0,TAU);g.stroke()}
   g.restore()}
 const drawDrone=n=>shipS(n,'rgd','#ff4fd8',.82,1);
@@ -329,9 +326,9 @@ function drawField(F){const pu=.5+.5*Math.sin(time*2.4),hd=F.h?1:0,z=1/zoom,rgb=
   for(let i=0;i<10;i++){const a0=time*.35+i/10*TAU;g.strokeStyle='rgba('+rgb+',.7)';g.lineWidth=Math.max(26,3.4*z);g.beginPath();g.arc(F.x,F.y,F.r,a0,a0+.09);g.stroke()}
   g.restore()}
 /* el campo también aparece en el mapa grande y en el minimapa */
-function mapField(X,Y,s){const S=E||G,F=S&&S.fld;if(!F)return;const hd=F.h?1:0,c=hd?'255,79,216':'130,190,255',x=X(F.x),y=Y(F.y),r=F.r*s;if(!Number.isFinite(x+y+r)||r<2)return;
-  g.save();g.beginPath();g.arc(x,y,r,0,TAU);g.fillStyle='rgba('+c+',.07)';g.fill();g.setLineDash([8,5]);g.lineWidth=2.4;g.strokeStyle='rgba('+c+',.95)';g.stroke();g.setLineDash([]);
-  if(r>40){g.fillStyle='rgba('+c+',.95)';g.font='bold 10px ui-monospace,Menlo,monospace';g.textAlign='center';g.fillText(hd?'CAMPO DEL JEFE':'ZONA DE COMBATE',x,y-r-5);g.textAlign='start'}g.restore()}
+function mapField(X,Y,s,mm){const S=E||G,F=S&&S.fld;if(!F)return;const hd=F.h?1:0,c=hd?'255,79,216':'130,190,255',x=X(F.x),y=Y(F.y),r=F.r*s;if(!Number.isFinite(x+y+r)||r<2)return;
+  g.save();if(mm){g.beginPath();g.rect(mm.x,mm.y,mm.w,mm.h);g.clip()}g.beginPath();g.arc(x,y,r,0,TAU);g.fillStyle='rgba('+c+',.09)';g.fill();g.setLineDash([8,5]);g.lineWidth=mm?1.6:3;g.strokeStyle='rgba('+c+',.95)';g.stroke();g.setLineDash([]);
+  if(!mm&&r>40){g.fillStyle='rgba('+c+',.95)';g.font='bold 10px ui-monospace,Menlo,monospace';g.textAlign='center';g.fillText(hd?'CAMPO DEL JEFE':'ZONA DE COMBATE',x,y-r-5);g.textAlign='start'}g.restore()}
 function drawWorld(){const S=E||G;if(!S)return;
   const pu=.5+.5*Math.sin(time*3),bar=barrier();
   if(S.fld)drawField(S.fld);
@@ -352,10 +349,10 @@ function drawWorld(){const S=E||G;if(!S)return;
 
 /* ---------- interfaz: panel de decisión y barra de vida del jefe ---------- */
 function css(){if(document.getElementById('rgCss'))return;const s=document.createElement('style');s.id='rgCss';
-  s.textContent=`#rgB{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);width:min(380px,calc(100vw - 600px));min-width:210px;z-index:39;pointer-events:none;display:none;font:11px ui-monospace,Menlo,monospace;color:#ffd9d2;text-align:center;filter:drop-shadow(0 0 10px rgba(255,40,50,.35))}
-#rgB .t{display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.16em;font-weight:700;font-size:11px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-shadow:0 0 8px rgba(255,60,70,.8)}
-#rgB .t b{color:#ff5a66;font-size:15px}#rgB .t i{font-style:normal;color:#ffcf8a;font-size:10px;letter-spacing:.18em;border:1px solid rgba(255,207,138,.5);padding:1px 6px}
-#rgB .b{position:relative;height:12px;background:#16060b;border:1px solid #ff4a5a;clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,10px 100%,0 50%);box-shadow:inset 0 0 8px #000}
+  s.textContent=`#rgB{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);width:min(640px,calc(100vw - 540px));min-width:300px;z-index:39;pointer-events:none;display:none;font:11px ui-monospace,Menlo,monospace;color:#ffd9d2;text-align:center;filter:drop-shadow(0 0 10px rgba(255,40,50,.35))}
+#rgB .t{display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.16em;font-weight:700;font-size:15px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-shadow:0 0 8px rgba(255,60,70,.8)}
+#rgB .t b{color:#ff5a66;font-size:21px}#rgB .t i{font-style:normal;color:#ffcf8a;font-size:12px;letter-spacing:.18em;border:1px solid rgba(255,207,138,.5);padding:1px 6px}
+#rgB .b{position:relative;height:22px;background:#16060b;border:1px solid #ff4a5a;clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,10px 100%,0 50%);box-shadow:inset 0 0 8px #000}
 #rgB .g,#rgB .f{position:absolute;left:0;top:0;bottom:0}
 #rgB .g{background:rgba(255,255,255,.55);transition:width 1.1s ease .35s}
 #rgB .f{background:linear-gradient(90deg,#6e0012,#ff2a3d 55%,#ff8a66);transition:width .18s}
@@ -363,7 +360,7 @@ function css(){if(document.getElementById('rgCss'))return;const s=document.creat
 #rgB .k{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),rgba(0,0,0,.55) calc(10% - 1px) 10%)}
 #rgB .m{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:#ffcf8a;box-shadow:0 0 6px #ffcf8a}
 #rgB.sh .b{border-color:#7de3ff;box-shadow:0 0 12px rgba(125,227,255,.5),inset 0 0 8px #000}
-#rgB .s{margin-top:3px;font-size:9px;letter-spacing:.08em;color:#ffb3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#rgB.sh .s{color:#7de3ff}
+#rgB .s{margin-top:4px;font-size:12px;letter-spacing:.08em;color:#ffb3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#rgB.sh .s{color:#7de3ff}
 @keyframes rgbs{from{background-position:120% 0}to{background-position:-120% 0}}`;
   document.head.appendChild(s)}
 function ui(){
@@ -381,7 +378,7 @@ function ui(){
     const host=!ctx.isGuest(),Bt=(a,t)=>`<button class="sq" data-a="${a}" style="position:static;padding:8px 10px;font-size:11px;margin-top:5px;width:100%">${t}</button>`;
     if(S.ph==='arr')h=`<div class=evh style="color:#7de3ff">NAVES DESCONOCIDAS</div><div class=evd>Se acercan en formación y te inmovilizan: no puedes moverte.</div>`;
     else if(S.ph==='pull')h=`<div class=evh style="color:#7de3ff">ESCOLTA FUERA</div><div class=evd>La guardia te devuelve a la frontera. Si vuelves a entrar, regresarán.</div>`;
-    else if(S.ph==='wave'){bc='#ff9a8a';h=`<div class=evh style="color:#ff9a8a">OLEADA ${(S.wv|0)+1} / 3</div><div class=evd>Acaba con todas las naves hostiles${host?' ('+units().length+' restantes)':''}.</div>`}
+    else if(S.ph==='wave'){bc='#ff9a8a';h=S.t<4.5?`<div class=evh style="color:#ff9a8a">OLEADA ${(S.wv|0)+1} / 3</div><div class=evd>Acaba con todas las naves hostiles${host?' ('+units().length+' restantes)':''}.</div>`:(host?`<div class=evd style="text-align:center">Enemigos restantes: <b>${units().length}</b></div>`:'');if(!h)el.style.borderColor='transparent'}
     else if(S.ph==='warn'){bc='#ff5a66';h=`<div class=evh style="color:#ff5a66">☠ AVISO DE JEFE</div><div class=evd><b>${S.bn}</b> llega en ${Math.max(0,Math.ceil(4-S.t))} s. Creará un campo del que no podrás huir.</div>`}
     else if(S.ph==='ask'){const left=Math.max(0,Math.ceil(S.lim-S.t));
       h=`<div class=evh style="color:#7de3ff">GUARDIA · ${S.nm.toUpperCase()}</div><div class=evd>${S.n} naves te rodean y <b>no son hostiles</b>. Para entrar en la región: <b>márchate</b> o <b>derrota a ${S.bn}</b>.</div><div class=evd>Tiempo para decidir: ${left} s</div>`+(host?Bt('acc','Luchar contra el jefe')+Bt('dec','Marcharme'):'<div class=evd>Decide el anfitrión de la sala.</div>')}
@@ -391,7 +388,7 @@ function ui(){
   if(bo){const p=cl(bo.hp/(bo.max||1),0,1)*100,sh=barrier();
     bar.style.display='block';bar.classList.toggle('sh',sh);bar._f.style.width=p+'%';bar._g.style.width=p+'%';
     if(bar._nm.textContent!==S.bn.toUpperCase())bar._nm.textContent=S.bn.toUpperCase();
-    const ph=bo.im?'INMORTAL · HUYE':bo.hp<bo.max*.5?'FASE II':'FASE I',st=bo.im?'Invulnerable: se retira. Sobrevive unos segundos':sh?'ESCUDO DE ESCOLTA · elimina las naves pequeñas ('+units().length+')':'Dispara a los núcleos dorados';
+    const ph=bo.im?'INMORTAL · HUYE':bo.hp<bo.max*.5?'FASE II':'FASE I',st=bo.im?'Invulnerable: se retira. Sobrevive unos segundos':sh?'ESCUDO DE ESCOLTA · elimina las naves pequeñas ('+units().length+')':'Dispara al casco';
     if(bar._ph.textContent!==ph)bar._ph.textContent=ph;if(bar._s.textContent!==st)bar._s.textContent=st}
   else bar.style.display='none'}
 function act(a){if(!E||ctx.isGuest())return;if(a==='acc')accept();else if(a==='dec')decline()}
@@ -410,7 +407,7 @@ function update(dt,c){ctx=c;
   ui()}
 const snap=()=>({id:E.id,rg:E.rg,nm:E.nm,ph:E.ph,t:+E.t.toFixed(1),lim:E.lim,n:E.n,bn:E.bn,rw:E.rw,bx:Math.round(E.bx||0),by:Math.round(E.by||0),fx:Math.round(E.fx),fy:Math.round(E.fy),wv:E.wv|0,fl:E.fld?[Math.round(E.fld.x),Math.round(E.fld.y),E.fld.r,E.fld.h?1:0]:0,lk:(E.ph==='arr'||E.ph==='ask')?1:0,tw:E.tw.filter(T=>!T.me&&T.ph!=='done').map(T=>[T.id,Math.round(T.x),Math.round(T.y),Math.round(T.vx),Math.round(T.vy),+T.h.toFixed(2),T.ph==='tow'?1:0])});
 function mpDiff(full){
-  const ck=cleared.size+':'+(E?E.id+E.ph+(E.tw.length?Math.floor(time*9):'')+(E.fld?E.fld.h:''):0);if(!full&&ck===sentKey)return null;sentKey=ck;
+  const ck=cleared.size+':'+(E?E.id+E.ph+(E.tw.length?Math.floor(time*9):'')+E.wv+(E.fld?E.fld.h:''):0);if(!full&&ck===sentKey)return null;sentKey=ck;
   return{s:E?snap():null,c:[...cleared]}}
 function mpApply(S){
   if(!S||typeof S!=='object')return;
@@ -424,6 +421,6 @@ const save=()=>({c:[...cleared]});
 function load(d){cleared=new Set();if(d&&Array.isArray(d.c))for(const id of d.c)cleared.add(String(id))}
 try{if(typeof window!=='undefined'&&window.__RGS&&window.__RGS.e)load(window.__RGS.e)}catch(e){}
 
-return{ver:VER,icon,update,drawWorld,drawMap:mapField,drawMini:mapField,towing:()=>!!(E&&E.tw.some(T=>T.me&&T.ph==='tow'))||!!(G&&(G.tw||[]).some(q=>q[6]&&q[0]===String(typeof MP!=='undefined'?MP.id:''))),mpDiff,mpApply,save,load,abort:()=>abort(''),cleared:id=>cleared.has(String(id)),lockJump:()=>lockJump()||!!(G&&G.fld),
+return{ver:VER,icon,update,drawWorld,drawMap:(X,Y,s)=>mapField(X,Y,s),drawMini:mapField,towing:()=>!!(E&&E.tw.some(T=>T.me&&T.ph==='tow'))||!!(G&&(G.tw||[]).some(q=>q[6]&&q[0]===String(typeof MP!=='undefined'?MP.id:''))),mpDiff,mpApply,save,load,abort:()=>abort(''),cleared:id=>cleared.has(String(id)),lockJump:()=>lockJump()||!!(G&&G.fld),
   debug:()=>({E:E&&{ph:E.ph,t:E.t,rg:E.rg,np:E.np},G:G&&G.ph,cleared:[...cleared],units:units().length})}
 })();
