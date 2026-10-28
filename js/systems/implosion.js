@@ -24,7 +24,8 @@ function impWarp(){const w=warp;if(!w||w._imp||!w.a||!w.dest)return;w._imp=1;
   if(T.imp&&impAllies().every(q=>q.imp))return;const A=w.a,D=w.dest;if(Math.hypot(D.x,D.y)<=Math.hypot(A.x,A.y))return;   // solo se corta al salir hacia fuera
   let hit=0;for(let i=1;i<=400;i++){const t=i/400;if(impLv(A.x+(D.x-A.x)*t,A.y+(D.y-A.y)*t)===2){hit=i;break}}
   if(hit<=1)return;const t=(hit-1)/400,tx=A.x+(D.x-A.x)*t,ty=A.y+(D.y-A.y)*t,d=Math.hypot(tx-A.x,ty-A.y);
-  w.dest.x=tx;w.dest.y=ty;w.dest.n='Límite del aro de Alfa';w.h=Math.atan2(ty-A.y,tx-A.x);w.te=2.5+Math.max(1.2,d/12000)/wspV();
+  const ox=D.x,oy=D.y;w.dest.x=tx;w.dest.y=ty;w.dest.n='Límite del aro de Alfa';w.h=Math.atan2(ty-A.y,tx-A.x);w.te=2.5+Math.max(1.2,d/12000)/wspV();
+  if(typeof wRetarget==='function')wRetarget(ox,oy,tx,ty);
   toast('⚠ El salto se corta en el límite del aro de Alfa: fuera la presión destruiría tu casco (o el de tu flota) sin reforzar')}
 function impUpd(dt){
   if(MPG||!impRing())return;

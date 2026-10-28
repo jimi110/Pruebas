@@ -41,7 +41,7 @@ function wEsc(w,dt){const r=MPR[w.esc.id],kill=w.esc.k==='kill';
  if(far>7000&&!w.jp){wJump(w,{x:r.x-Math.cos(r.a||0)*220,y:r.y-Math.sin(r.a||0)*220},.3,1.2);return}
  let tg=null,td=1e9;
  if(kill){if(!r.dk&&!r.dd&&!r.wk){tg=r;td=far}for(const o of r.wgs||[]){if(o.jp)continue;const d=dist(w,o);if(d<td){td=d;tg={x:o.x,y:o.y,vx:o.svx||0,vy:o.svy||0}}}}
- else for(const o of npcs){if(o.team!=='e'||o.hp<=0||o.evs)continue;const d=dist(w,o);if(d<td&&d<900&&dist(o,r)<1300){td=d;tg=o}}
+ else for(const o of npcs){if(!wFoe(o))continue;const d=dist(w,o);if(d<td&&d<900&&dist(o,r)<1300){td=d;tg=o}}
  if(tg&&td<900){const a=lead(w,tg);w.a+=clamp(angDiff(w.a,a),-1,1)*4*dt;const k=td>300?1:td<180?-.5:0;w.vx=(w.vx+Math.cos(w.a)*w.spd*.9*k*dt)*(1-.8*dt);w.vy=(w.vy+Math.sin(w.a)*w.spd*.9*k*dt)*(1-.8*dt);
   if(td<600&&w.cd<=0&&Math.abs(angDiff(w.a,a))<.15){w.cd=w.rate;bullets.push(bl(w,a+rnd(-.05,.05),'w',w.dmg))}}
  else{const sl=wSlot(i,fe.length),h=r.a||0,px=r.x+Math.cos(h)*sl[0]-Math.sin(h)*sl[1],py=r.y+Math.sin(h)*sl[0]+Math.cos(h)*sl[1],dx=px-w.x,dy=py-w.y,d=Math.hypot(dx,dy),sp=Math.min(w.spd*1.3,d*1.4),bx=r.vx||0,by=r.vy||0;
@@ -60,6 +60,10 @@ function wjStep(w,dt){const j=w.jp;j.t+=dt;w.a+=angDiff(w.a,j.h)*Math.min(1,10*d
  if(p<r){de=p/r/nn;e=p*p/(2*r)/nn}else if(p>1-r){const q=1-p;de=q/r/nn;e=1-q*q/(2*r)/nn}else{de=1/nn;e=(r/2+p-r)/nn}
  const sp=dist(j.a,j.d)*de/L;w.x=j.a.x+(j.d.x-j.a.x)*e;w.y=j.a.y+(j.d.y-j.a.y)*e;w.a=j.h;w.vx=Math.cos(j.h)*sp;w.vy=Math.sin(j.h)*sp;
  if(j.t>=j.te){w.x=j.d.x;w.y=j.d.y;w.vx=Math.cos(j.h)*w.spd*.6;w.vy=Math.sin(j.h)*w.spd*.6;w.jp=null}}
+/* si el salto del piloto se corta antes de su destino, la flota que ya salió en ese salto se detiene en el mismo punto */
+/* objetivos de la flota: piratas (equipo e) y el jefe de región (slot 100, con evs: lo gestiona RGEV) mientras no sea invulnerable */
+const wFoe=o=>o.hp>0&&(o.team==='e'&&!o.evs||o.slot===100&&o.evs&&!o.im);
+function wRetarget(ox,oy,nx,ny){for(const q of wing){const j=q.jp;if(!j||q.hp<=0||Math.hypot(j.d.x-ox,j.d.y-oy)>1500)continue;j.d={x:nx+(j.d.x-ox),y:ny+(j.d.y-oy)};j.h=Math.atan2(j.d.y-j.a.y,j.d.x-j.a.x);j.te=j.t1+Math.max(1.2,dist(j.a,j.d)/12000)/wspV()}}
 function wFollowJump(wp){const fo=wing.filter(q=>q.st==='follow'&&q.hp>0&&!q.jp);fo.forEach((q,i)=>{const sl=wSlot(i,fo.length),h=wp.h,D=wp.dest;wJump(q,{x:D.x+Math.cos(h)*sl[0]-Math.sin(h)*sl[1],y:D.y+Math.sin(h)*sl[0]+Math.cos(h)*sl[1]},.6+.5*i,wp.t1+.3)})}
 function wHit(b){for(const w of wing)if(w.hp>0&&!w.jp&&Math.hypot(w.x-b.x,w.y-b.y)<18){b.life=0;mpBh(b);{const q=Math.min(w.shd||0,b.d);w.shd=(w.shd||0)-q;w.hp-=b.d-q;w.lh=time;w.by=b.o}if(b.o)b.o.hostile=time;boom(b.x,b.y,4,'#6cf');return true}return false}
 const W_D={agr:'Atacan a cualquier enemigo cercano.',def:'Solo atacan a quien os dispare a ti o a ellos.',obj:'Solo atacan a tu objetivo fijado [T] o al último que disparaste.',pas:'No disparan; solo te acompañan.'};
@@ -191,9 +195,9 @@ function wingUpd(dt){
   const fl=w.st==='follow',an=fl?ship:(w.hb||(w.hb=nBase(w)));let tg=null,td=1e9;
   if(fl){if(!ship.docked&&WG.b!=='pas'){
     if(WG.b==='obj'){const L=ship.lock&&ship.lock.hp>0&&dist(ship,ship.lock)<1500?ship.lock:(lastShot&&lastShot.hp>0&&time-lastShotT<6?lastShot:null);if(L){tg=L;td=dist(w,L)}}
-    else for(const o of npcs){if(o.team!=='e'||o.hp<=0||o.evs)continue;if(WG.b==='def'&&time-(o.hostile||-99)>8)continue;const d=dist(w,o);if(d<td&&d<(WG.b==='agr'?900:1100)){td=d;tg=o}}
+    else for(const o of npcs){if(!wFoe(o))continue;if(WG.b==='def'&&time-(o.hostile||-99)>8)continue;const d=dist(w,o);if(d<td&&d<(WG.b==='agr'?900:1100)){td=d;tg=o}}
     if(tg&&dist(tg,ship)>1300)tg=null}}
-  else for(const o of npcs){if(o.team!=='e'||o.hp<=0||o.evs)continue;const d=dist(w,o);if(d<td&&d<800&&dist(o,an)<1200){td=d;tg=o}}
+  else for(const o of npcs){if(!wFoe(o))continue;const d=dist(w,o);if(d<td&&d<800&&dist(o,an)<1200){td=d;tg=o}}
   
   const i=fo.indexOf(w),sl=fl?wSlot(i,fo.length):[0,0],px=fl?ship.x+Math.cos(hd)*sl[0]-Math.sin(hd)*sl[1]:an.x+Math.cos(w.oa)*(an.r+330),py=fl?ship.y+Math.sin(hd)*sl[0]+Math.cos(hd)*sl[1]:an.y+Math.sin(w.oa)*(an.r+330);
     if(state==='warp')tg=null;
