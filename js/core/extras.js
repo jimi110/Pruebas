@@ -99,7 +99,7 @@ function sczMove(){for(let k=0;k<300;k++){const a=rnd(0,TAU),d=rnd(5000*UK,30000
 function drawSczOld(){for(const L of (SCZ.olds||[]))for(const[x,y,sc,sh]of L){if(!vis(x,y,200))continue;drawS(x,y,.9+x*.001,sh,'#7d8794',sc,{h:.1,p:{eng:0,eg2:0,wpn:0,min:0,jmp:0},th:0})}}
 function miniEv(dt){
   if(state!=='menu'&&!mpSlave()&&mpD(A)<4200){alT-=dt;if(alT<=0){alT=rnd(100,240);if(npcs.filter(q=>q.raid&&q.hp>0).length<3){const n=[1,1,2,2,3][(Math.random()*5)|0],a0=rnd(0,TAU);for(let i=0;i<n;i++){const a=a0+rnd(-.3,.3),d=2900+rnd(0,300),e=dscale(balE(mk('e',A.x+Math.cos(a)*d,A.y+Math.sin(a)*d,A)));e.raid=1;e.kc=1;e.agr=2600;npcs.push(e)}}}}
-  for(const b of BASES){if(!b.small)continue;b.lc=(b.lc||0)-dt;if(b.lc>0)continue;let tg=null,td=1250+b.r;for(const n of npcs){if(n.team!=='e'||n.hp<=0||n.evs)continue;const d=dist(n,b);if(d<td){td=d;tg=n}}if(!tg)continue;
+  for(const b of BASES){if(!b.small&&!b.sty)continue;b.lc=(b.lc||0)-dt;if(b.lc>0)continue;let tg=null,td=1250+b.r;for(const n of npcs){if(n.team!=='e'||n.hp<=0||n.evs)continue;const d=dist(n,b);if(d<td){td=d;tg=n}}if(!tg)continue;
     b.lc=tg.boss?2.4:1.4;lzr.push({x1:b.x,y1:b.y,x2:tg.x,y2:tg.y,t:0,d:.5,tg});sfx('b',{x:tg.x,y:tg.y},34);
     if(tg.boss){tg.hp=Math.max(1,tg.hp-100);tg.lh=time;boom(tg.x,tg.y,14,'#9ff')}
     else{tg.hp=-999;tg.kc=1;boom(tg.x,tg.y,40,'#9ff');for(let i=0;i<40;i++){const a=rnd(0,TAU),sp=rnd(40,280);parts.push({x:tg.x,y:tg.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rnd(.4,1.2),max:1.2,c:i%3?'#9ff':'#fff'})}}}

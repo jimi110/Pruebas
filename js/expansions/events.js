@@ -21,7 +21,7 @@
    ========================================================================== */
 const RGEV=(function(){
 'use strict';
-const VER=4,TAU=Math.PI*2,FR=3400;     // FR = radio del campo de captura del jefe
+const VER=5,TAU=Math.PI*2,FR=3400;     // FR = radio del campo de captura del jefe
 const rnd=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
 const nv=(v,d)=>Number.isFinite(+v)?+v:d;
 const K={boss:100,drone:101,snipe:102,tug:103};            // se guarda en npc.slot (viaja por la sincronización de index)

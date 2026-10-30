@@ -30,7 +30,15 @@ const oDel=(nm,m,n)=>({tx:'Entrega '+n+' de '+MIN[m][0]+' en '+nm+' (minado tras
 /* Desgaste leve para poder enseñar/completar reparaciones aunque la nave esté intacta */
 function qWear(n){let have=PR.filter(p=>gv(p[0])<gm(p[0])-.01).length;const ok=PR.map(p=>p[0]).filter(k=>k!=='hull'&&k!=='shd'&&gv(k)>=gm(k)-.01);while(have<n&&ok.length){const k=ok.splice(Math.floor(Math.random()*ok.length),1)[0];sv(k,gm(k)*.72);have++;toast('Revisión: desgaste detectado en '+NM[k]+' · repárala desde Nave [N]')}}
 /* ===== Campaña principal (datos): para añadir una base/capítulo nuevo basta con añadir misiones con ch:N y enlazar 'prev' ===== */
-const CHT={1:'Base Alfa',2:'Base Beta',3:'Base Omega',4:'Nebulosa Zafiro'},CHN={1:2,2:2};
+const CHT={1:'Base Alfa',2:'Base Beta',3:'Base Omega',4:'Nebulosa Zafiro',5:'Base Zafiro'},CHN={1:2,2:2};
+/* ---- Nebulosa Zafiro (region-01): ayudas para misiones. Todo es defensivo: la región se carga bajo demanda y puede no estar lista ---- */
+const ZR='region-01',ZBN='Base Zafiro',ZLZ={x:125000,y:-4000,n:'Jirón Lapislázuli'},ZZA={x:100000,y:-15000,n:'Campo Zafiro'};
+const inZv=()=>!!RGH(r=>r.vis(ZR)),bpOn=k=>!!(QX.bp&&QX.bp[k]);
+const zPos=()=>RGH(r=>r.stnPos(ZBN))||RGH(r=>r.pos(ZR))||{x:112000,y:-9000,n:ZBN};
+let zC='a',zT=0;function qZone(dt){const z=RGH(r=>r.at(ship.x,ship.y))===ZR?'z':'a';if(z===zC)zT=0;else{zT+=dt;if(zT>4){zC=z;zT=0}}}   // zona actual con 4 s de histéresis: decide qué encargos se generan
+const oZDock=()=>({tx:'Atraca en Base Zafiro',n:1,rel:1,g:()=>QX.dock[ZBN]||0,at:()=>{const b=zPos();return{x:b.x,y:b.y,n:ZBN}}});
+const oZOre=(m,n)=>({tx:'Mina '+MIN[m][0],n,rel:1,g:()=>QX.ore[m]||0,at:()=>{const a=qNear(asts,a=>a.m===m&&!a.dead&&a.ore>.5);if(a)return{x:a.x,y:a.y,n:'Asteroide de '+MIN[m][0]};const f=m==='lz'?ZLZ:ZZA;return{x:f.x,y:f.y,n:f.n}}});
+const oBp=(k,tx,pid,fx,fy)=>({tx,n:1,g:()=>bpOn(k)?1:0,at:()=>{const p=RGH(r=>r.poiPos(ZR,pid));return{x:p?p.x:fx,y:p?p.y:fy,n:'Baliza'}}});
 const sideLoc=ch=>{const ss=QUESTS.filter(q=>q.cs===ch&&!qdn(q.id)&&qSt(q)!=='locked'),a=ss.find(q=>qSt(q)==='active')||ss[0];if(!a)return null;const pr=qProg(a),i=Math.max(0,pr.findIndex(p=>!p.ok));return a.objs[i].at()};
 const oSides=ch=>({tx:'Completa '+CHN[ch]+' misiones secundarias del capítulo (elige entre 3)',n:CHN[ch],g:()=>QUESTS.filter(q=>q.cs===ch&&qdn(q.id)).length,at:()=>sideLoc(ch)});
 const MQ=(ch,id,prev,o)=>Object.assign({id,cat:'main',auto:1,ch,when:prev?()=>qdn(prev):undefined},o);
@@ -85,7 +93,18 @@ const QUESTS=[
  MQ(4,'c4.4','c4.3',{name:'Casco anti-implosión',desc:'Fuera del aro de Alfa la presión destruye un casco normal. En Base Omega, compra el refuerzo en la pestaña MEJORAS con tus lingotes y equípalo en NAVE → Casco.',objs:[{tx:'Compra el refuerzo en MEJORAS (Base Omega: 30 lingotes + 3000 cr) y equípalo en NAVE → Casco',n:1,rel:1,g:()=>QX.hu||0,at:()=>({x:OM.x,y:OM.y,n:OM.n})}],rew:{scrap:30},tip:'Atracado en Base Omega, abre Nave [N] → MEJORAS y compra el refuerzo; luego ve a NAVE → icono Casco y pulsa Equipar. Una vez por nave, +100 de resistencia. Sin él, al salir del aro verás un aviso de implosión y la nave explotará.'}),
  MQ(4,'c4.5','c4.4',{name:'Flota reforzada',desc:'Tu flota también implosionaría fuera del aro: compra kits de refuerzo en MEJORAS (Base Omega, más baratos) y equípalos en la pestaña FLOTA.',objs:[{tx:'Equipa el refuerzo a todas las naves de tu flota (compra los kits en MEJORAS, Base Omega)',n:1,g:()=>impAllies().every(w=>w.imp)?1:0,at:()=>{const need=Math.max(0,impAllies().filter(w=>!w.imp).length-(QX.fli|0))*IMPF.l;if(ingTot()<need){const a=qNear(asts,a=>IMPK.includes(a.m)&&!a.dead&&a.ore>.5);if(a)return{x:a.x,y:a.y,n:'Más mineral raro para fundir'}}return{x:OM.x,y:OM.y,n:OM.n}}}],rew:{cred:300},tip:'Cada kit cuesta 8 lingotes y 400 cr. Se compran en MEJORAS (Base Omega) y se equipan con el botón Reforzar de la pestaña FLOTA. Si no tienes flota, esta misión se completa sola.'}),
  MQ(4,'c4.6','c4.5',{name:'Cruza la zona de implosión',desc:'Ya puedes salir del aro. Viaja a la Nebulosa Zafiro, al este de Alfa; su borde está marcado por una hilera de asteroides.',objs:[{tx:'Llega a la Nebulosa Zafiro',n:1,g:()=>RGH(r=>r.vis('region-01'))?1:0,at:()=>RGH(r=>r.pos('region-01'))}],rew:{cred:500},tip:'Usa el mapa [M] para fijar el destino. Con el casco y la flota reforzados el salto no se corta al salir del aro.'}),
- MQ(4,'c4.7','c4.6',{chEnd:4,last:1,name:'La guardia de Zafiro',desc:'Al entrar, la guardia de la nebulosa te inmovilizará. Derrota al Centinela Zafiro para abrir la región.',objs:[{tx:'Derrota al Centinela Zafiro',n:1,g:()=>RGH(r=>r.cleared('region-01'))?1:0,at:()=>RGH(r=>r.pos('region-01'))}],rew:{cred:2000,scrap:60},tip:'Puedes huir (te devuelven a la frontera) o luchar: primero la guardia, después 2 oleadas y el jefe. Su campo te atrapa hasta derrotarlo; con poca vida se vuelve invulnerable y huye.'}),
+ MQ(4,'c4.7','c4.6',{chEnd:4,name:'La guardia de Zafiro',desc:'Al entrar, la guardia de la nebulosa te inmovilizará. Derrota al Centinela Zafiro para abrir la región.',objs:[{tx:'Derrota al Centinela Zafiro',n:1,g:()=>RGH(r=>r.cleared('region-01'))?1:0,at:()=>RGH(r=>r.pos('region-01'))}],rew:{cred:2000,scrap:60},tip:'Puedes huir (te devuelven a la frontera) o luchar: primero la guardia, después 2 oleadas y el jefe. Su campo te atrapa hasta derrotarlo; con poca vida se vuelve invulnerable y huye.'}),
+ /* Capítulo 5 · Base Zafiro: balizas con planos, materiales nuevos y construcción */
+ MQ(5,'c5.1','c4.7',{chStart:1,name:'Base Zafiro',desc:'Con el Centinela derrotado, la guardia de la nebulosa ya no te ataca: sus guardias huyen al verte. Atraca en la Base Zafiro.',objs:[oZDock()],rew:{cred:500},tip:'La Base Zafiro está en el centro de la Nebulosa Zafiro. Allí se construyen el tren de aterrizaje y el rayo francotirador cuando tienes sus planos.'}),
+ MQ(5,'c5.2','c5.1',{name:'La baliza antigua',desc:'Una baliza antigua guarda el plano de un tren de aterrizaje para posarte en planetas (llegarán pronto). Acércate para recoger el plano.',objs:[oBp('gear','Recoge el plano en la Baliza antigua','p1',99000,1000)],rew:{cred:300},tip:'La baliza está al suroeste de la nebulosa. Solo hay que acercarse.'}),
+ MQ(5,'c5.3','c5.2',{name:'Materiales de Zafiro',desc:'El tren de aterrizaje necesita lapislázuli y zafiro, minerales nuevos de la nebulosa. Lapislázuli: Jirón Lapislázuli (asteroides en movimiento). Zafiro: Campo Zafiro.',objs:[oZOre('lz',30),oZOre('za',50)],rew:{cred:600,scrap:40},tip:'Ambos exigen Sistema de minería nv.1. Los asteroides del Jirón se mueven y chocan: esquívalos. Además necesitarás 250 de chatarra (rompe asteroides o repara).'}),
+ MQ(5,'c5.4','c5.3',{name:'Tren de aterrizaje',desc:'Construye el tren de aterrizaje: 30 de lapislázuli, 50 de zafiro y 250 de chatarra (cuenta tu bodega y el almacén).',objs:[{tx:'Construye el tren de aterrizaje en Base Zafiro (MEJORAS)',n:1,g:()=>(QX.gr|0)>0?1:0,at:()=>{const b=zPos();return{x:b.x,y:b.y,n:ZBN}}}],rew:{cred:800},tip:'Atracado en Base Zafiro, abre MEJORAS y pulsa Construir en la nave que quieras. Las nuevas patas se ven en el casco.'}),
+ MQ(5,'c5.5','c5.4',{chEnd:5,last:1,name:'La baliza de precisión',desc:'Otra baliza, al sur de la nebulosa, guarda el plano de un arma de francotirador. Recógelo.',objs:[oBp('laser','Recoge el plano en la Baliza de precisión','p2',118000,14000)],rew:{cred:1500,scrap:100},tip:'Después podrás construir el rayo francotirador en MEJORAS de Base Zafiro.'}),
+ /* Secundarias de Zafiro: solo aparecen cuando el piloto ha llegado a la nebulosa */
+ {id:'zs1',cat:'side',auto:1,when:inZv,name:'Señal en la nube',desc:'Una nube de energía zafiro distorsiona los sensores. Descúbrela.',objs:[{tx:'Descubre la Nube de energía zafiro',n:1,g:()=>RGH(r=>r.found(ZR,'a1'))?1:0,at:()=>({x:120000,y:-22000,n:'Nube de energía zafiro'})}],rew:{cred:250,scrap:20}},
+ {id:'zs2',cat:'side',auto:1,when:inZv,name:'Rocas en movimiento',desc:'Los asteroides del Jirón Lapislázuli derivan y chocan entre sí. Rompe diez minándolos.',objs:[{tx:'Mina 10 asteroides del Jirón Lapislázuli hasta agotarlos',n:10,rel:1,g:()=>QX.mvd||0,at:()=>{const a=qNear(asts,a=>a.mv&&!a.dead&&a.ore>.5);return a?{x:a.x,y:a.y,n:'Asteroide móvil'}:{x:ZLZ.x,y:ZLZ.y,n:ZLZ.n}}}],rew:{cred:350,scrap:25}},
+ {id:'zs3',cat:'side',auto:1,when:()=>bpOn('laser'),name:'Construcción de precisión',desc:'Tienes el plano del rayo francotirador. Constrúyelo en Base Zafiro.',objs:[{tx:'Construye el rayo francotirador en Base Zafiro (MEJORAS)',n:1,g:()=>QX.snb?1:0,at:()=>{const b=zPos();return{x:b.x,y:b.y,n:ZBN}}}],rew:{cred:600}},
+ {id:'zs4',cat:'side',auto:1,repeat:1,when:inZv,name:'Patrulla de Zafiro',desc:'Destruye 6 naves enemigas en la nebulosa.',objs:[oKill(6,'Destruye enemigos')],rew:{cred:350,scrap:20}},
  /* Secundarias generales (fuera de la campaña) */
  {id:'wg',cat:'side',auto:1,when:()=>TYPES[4].own,name:'Escoltas',desc:'Repara una nave con el Técnico y ordénale que te siga (clic derecho sobre ella).',objs:[{tx:'Rescata una nave averiada',n:1,rel:1,g:()=>QX.rescue||0},{tx:'Clic derecho en la nave: Seguirme o Enviar a base',n:1,rel:1,g:()=>QX.wgf||0}],rew:{cred:250}},
  {id:'s2',cat:'side',auto:1,repeat:1,when:()=>TYPES[4].own,name:'Rescate de nave',desc:'Rescata una nave averiada (modo Rescate del Técnico).',objs:[{tx:'Rescata una nave averiada',n:1,rel:1,g:()=>QX.rescue,at:()=>{const d=qNear(derel,d=>!d.dead);return d&&{x:d.x,y:d.y,n:'Nave averiada'}}}],rew:{cred:200}},
@@ -121,26 +140,35 @@ const JK={
  mat:p=>({name:'Materiales · '+BASES[p.d].n,desc:'Entrega '+p.n+' de chatarra en '+BASES[p.d].n+'. Se descuenta de tu bodega al atracar.',objs:[oMat(p.id,BASES[p.d].n,p.n)],mat:{nm:BASES[p.d].n,n:p.n}}),
  inv:p=>({name:'Investigar · '+p.fn,desc:'Una baliza emite una señal débil cerca de '+p.fn+'. Acércate a investigar.',objs:[oPt(p.id,p.x,p.y,'Investiga la señal','Señal débil')],pt:{x:p.x,y:p.y,msg:'Señal investigada: recoges algunos restos'}}),
  rec:p=>({name:'Recuperar componente',desc:'Un componente se perdió cerca de '+p.fn+'. Recupéralo y entrégalo en Base Alfa.',objs:[oPt(p.id,p.x,p.y,'Recupera el componente','Componente perdido'),oDk2(p.id,'Base Alfa')],dk:'Base Alfa',pt:{x:p.x,y:p.y,msg:'Componente recuperado: llévalo a Base Alfa'},pre:()=>!!(QZ.s[p.id]||{}).v}),
- rsc:p=>rscQ(p)};
-const qValid=p=>!!p&&!!p.id&&!!((p.k==='col'&&MIN[p.m])||(p.k==='trv'&&BASES[p.d])||(p.k==='scr'&&p.n)||(p.k==='mat'&&BASES[p.d]&&p.n)||((p.k==='inv'||p.k==='rec')&&isFinite(p.x)&&isFinite(p.y)&&p.fn)||(p.k==='rsc'&&RESC[p.v]&&p.pa&&Array.isArray(p.wv)&&isFinite(p.x)&&isFinite(p.y)));
+ rsc:p=>rscQ(p),
+ /* Encargos de la Nebulosa Zafiro (solo se generan mientras estás en la nebulosa) */
+ zcl:p=>({name:'Cosecha de Zafiro · '+p.n+' × '+MIN[p.m][0],desc:'Mina '+p.n+' de '+MIN[p.m][0]+' en la Nebulosa Zafiro y atraca en Base Zafiro.',objs:[oZOre(p.m,p.n),oZDock()]}),
+ zmt:p=>({name:'Materiales · Base Zafiro',desc:'Entrega '+p.n+' de chatarra en Base Zafiro. Se descuenta de tu bodega al atracar.',objs:[{tx:'Entrega '+p.n+' de chatarra en Base Zafiro',n:1,g:()=>(QZ.s[p.id]||{}).dl?1:0,at:()=>{if((ship.scrap|0)<p.n){const l=qNear(loot);if(l)return{x:l.x,y:l.y,n:'Chatarra'};const a=qNear(asts,a=>!a.dead&&a.ore>.5);if(a)return{x:a.x,y:a.y,n:'Rompe asteroides: sueltan chatarra'}}const b=zPos();return{x:b.x,y:b.y,n:ZBN}}}],mat:{nm:ZBN,n:p.n}}),
+ zinv:p=>({name:'Investigar · '+p.fn,desc:'Una señal débil llega desde '+p.fn+'. Acércate a investigar.',objs:[oPt(p.id,p.x,p.y,'Investiga la señal','Señal débil')],pt:{x:p.x,y:p.y,msg:'Señal investigada: recoges algunos restos'}}),
+ zkl:p=>({name:'Patrulla · '+p.n+' piratas',desc:'Destruye '+p.n+' naves enemigas en la nebulosa.',objs:[oKill(p.n,'Destruye '+p.n+' enemigos')]})};
+const qValid=p=>!!p&&!!p.id&&!!((p.k==='col'&&MIN[p.m])||(p.k==='trv'&&BASES[p.d])||(p.k==='scr'&&p.n)||(p.k==='mat'&&BASES[p.d]&&p.n)||((p.k==='inv'||p.k==='rec')&&isFinite(p.x)&&isFinite(p.y)&&p.fn)||(p.k==='zcl'&&MIN[p.m]&&p.n)||(p.k==='zmt'&&p.n)||(p.k==='zinv'&&isFinite(p.x)&&isFinite(p.y)&&p.fn)||(p.k==='zkl'&&p.n)||(p.k==='rsc'&&RESC[p.v]&&p.pa&&Array.isArray(p.wv)&&isFinite(p.x)&&isFinite(p.y)));
 const jobQ=p=>Object.assign({id:p.id,cat:'job',rew:{cred:p.r}},JK[p.k](p));
 /* Ubicación real: campos ya visitados o alrededores de bases visitadas, lejos de zonas hostiles y de bases */
-function qLoc(mn,mx){const vf=FIELDS.filter(F=>!F.ring&&QX.vis[F.n]),bs=BASES.filter(b=>QX.vis[b.n]);
+function qLoc(mn,mx){const vf=FIELDS.filter(F=>!F.ring&&QX.vis[F.n]),bs=BASES.filter(b=>QX.vis[b.n]&&!b.rg);
  for(let t=0;t<30;t++){let x,y,n;if(vf.length&&Math.random()<.7){const F=vf[rn(vf.length)],q=F.smp();x=q[0];y=q[1];n=F.n}else{const b=bs[rn(bs.length)],a=rnd(0,TAU),d=rnd(2400,4200);x=b.x+Math.cos(a)*d;y=b.y+Math.sin(a)*d;n=b.n}
   const P={x,y},dA=dist(P,A);if(dA<mn||dA>mx||dist(P,B)<2300||dist(P,ship)<1500||BASES.some(b=>dist(b,P)<b.r+500))continue;return{x,y,n}}return null}
 function rscGen(){if(!qdn('c1.6')||ship.dead>0||ship.parts.wpn<40||ship.hull<T.hull*.5)return null;const cs=RESC.map((c,i)=>i).filter(i=>RESC[i].when());if(!cs.length)return null;const v=cs[rn(cs.length)],c=RESC[v],l=qLoc(c.dist[0],c.dist[1]);if(!l)return null;
  const ks=c.pool.slice(),pa={},np=c.np[0]+rn(c.np[1]-c.np[0]+1);for(let i=0;i<np&&ks.length;i++)pa[ks.splice(rn(ks.length),1)[0]]=Math.round(rnd(c.lo,c.hi)*100);
  let need=0;for(const k in pa)need+=evCost(k,pa[k],c.mat);if((ship.scrap|0)<Math.ceil(need*.5))return null;
  return{k:'rsc',v,x:l.x,y:l.y,fn:l.n,pa,need,hp:c.hp,mat:c.mat,wv:c.waves.slice(),tier:c.tier,dm:c.dm,r:Math.round(rnd(c.rew[0],c.rew[1])),rs:Math.round(rnd(c.scr[0],c.scr[1]))}}
-const JW={col:3,trv:2,scr:2,mat:2,inv:2,rec:1.5,rsc:1.3};
+const JW={col:3,trv:2,scr:2,mat:2,inv:2,rec:1.5,rsc:1.3,zcl:3,zmt:2,zinv:2,zkl:2};
 function qGen(){const pend=QZ.jobs.filter(p=>{const s=(QZ.s[p.id]||{s:'available'}).s;return s==='available'||s==='active'}),has=k=>pend.some(p=>p.k===k);
- const vb=BASES.map((b,i)=>i).filter(i=>i>0&&QX.vis[BASES[i].n]);
+ const vb=BASES.map((b,i)=>i).filter(i=>i>0&&!BASES[i].rg&&QX.vis[BASES[i].n]);
  const G={col:()=>{const m=['fe','cu','cr'][rn(3)],n=12+rn(19);return{k:'col',m,n,r:Math.round(n*C.sell*MIN[m][2]*.9)}},
   trv:()=>{if(!vb.length)return null;const d=vb[rn(vb.length)];return{k:'trv',d,r:Math.min(700,Math.round(150+dist(BASES[d],A)/25))}},
   scr:()=>{const n=8+rn(13);return{k:'scr',n,r:n*14}},
   mat:()=>{if(!vb.length)return null;const d=vb[rn(vb.length)],n=6+rn(9);return{k:'mat',d,n,r:Math.round(n*16+Math.min(250,dist(BASES[d],A)/90))}},
   inv:()=>{const l=qLoc(2500,32000);return l&&{k:'inv',x:l.x,y:l.y,fn:l.n,r:Math.round(140+Math.min(260,dist(l,A)/80))}},
   rec:()=>{const l=qLoc(3500,45000);return l&&{k:'rec',x:l.x,y:l.y,fn:l.n,r:Math.round(220+Math.min(300,dist(l,A)/80))}},
-  rsc:rscGen};
- let ks=Object.keys(G).filter(k=>!has(k));while(ks.length){const tot=ks.reduce((a,k)=>a+JW[k],0);let r=Math.random()*tot,k=ks[0];for(const q of ks){r-=JW[q];if(r<=0){k=q;break}}
+  rsc:rscGen,
+  zcl:()=>{const m=['lz','za'][rn(2)],n=10+rn(16);return{k:'zcl',z:1,m,n,r:Math.round(n*C.sell*MIN[m][2])+120}},
+  zmt:()=>{const n=15+rn(26);return{k:'zmt',z:1,n,r:n*14+150}},
+  zinv:()=>{const l=RGH(r=>r.randPt(ZR));return l&&{k:'zinv',z:1,x:l.x,y:l.y,fn:l.n,r:350+rn(150)}},
+  zkl:()=>{const n=3+rn(4);return{k:'zkl',z:1,n,r:n*70+120}}};
+ const zn=zC==='z';let ks=Object.keys(G).filter(k=>!has(k)&&(k[0]==='z')===zn&&!(MPG&&k==='rsc'));while(ks.length){const tot=ks.reduce((a,k)=>a+JW[k],0);let r=Math.random()*tot,k=ks[0];for(const q of ks){r-=JW[q];if(r<=0){k=q;break}}
   const p=G[k]();if(p){QZ.jobs.push(Object.assign({id:'j'+(++QZ.jn)},p));return}ks=ks.filter(q=>q!==k)}}

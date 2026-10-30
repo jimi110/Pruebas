@@ -15,7 +15,7 @@
 "use strict";
 let hubTab='nave',mkSel='fe',MKV=0,MKA=0,MKH=0,flSel=0,flMin='fe',flMode='sell',FLID=0;
 const MKN=90,MKSP=.92,MKBY=1.1,MKIN=2.2;
-const MKS0={fe:900,cu:700,cr:450,pt:260,ti:160,ir:90,ne:40,sc:1500};
+const MKS0={fe:900,cu:700,cr:450,pt:260,ti:160,ir:90,ne:40,lz:150,za:110,sc:1500};
 /* ---------- catálogo ---------- */
 function mkItems(){const L=[];for(const k in MIN)L.push({k,raw:1,n:MIN[k][0],col:MIN[k][1],p0:C.sell*MIN[k][2],s0:MKS0[k]||300});
   for(const k in MIN)L.push({k:'i_'+k,ing:k,n:'Lingote de '+MIN[k][0].toLowerCase(),col:MIN[k][1],p0:C.sell*MIN[k][2]*MKIN,s0:Math.round((MKS0[k]||300)*.4)});
@@ -77,6 +77,8 @@ const MKL={fe:['Esqueleto de cascos, vigas y remaches. Tan común que casi nunca
  ti:['Aleación ligerísima y muy resistente. Las naves de élite lo prefieren al hierro.','Cascos reforzados y estructura de naves rápidas.','Alta: exige Sistema de minería nv.1.'],
  ir:['Metal densísimo y casi indestructible. Resiste presiones que aplastarían cualquier otro casco.','Escudos, cascos de élite y herramientas de minería profunda.','Muy alta: exige Sistema de minería nv.2.'],
  neu:0};
+MKL.lz=['Piedra azul profunda del Jirón Lapislázuli, una nube de rocas en movimiento. Muy apreciada como material estructural de la Nebulosa Zafiro.','Tren de aterrizaje y construcciones de la Base Zafiro.','Media: exige Sistema de minería nv.1.'];
+MKL.za=['Cristal azul de la Nebulosa Zafiro, de gran pureza. Se extrae del Campo Zafiro.','Tren de aterrizaje y armas de precisión de la Base Zafiro.','Media: exige Sistema de minería nv.1.'];
 MKL.ne=['Materia de estrellas muertas. Apenas se estudia y casi nadie sabe trabajarla: el mineral más raro y caro.','Reactores avanzados e investigación.','Extrema: exige Sistema de minería nv.3.'];
 const MKSC=['Restos de naves y estaciones, desguazados y prensados. Se usa para reparar antes que los créditos.','Reparaciones en cualquier base.'];
 const BLORE={'Base Alfa':'Primera base de la región, construida sobre el aro de asteroides que amortigua la presión del exterior. Hogar de los pilotos novatos y de todo el comercio local.',
@@ -84,7 +86,7 @@ const BLORE={'Base Alfa':'Primera base de la región, construida sobre el aro de
  'Base Omega':'Última base conocida, de acceso restringido. Sus guardianes atacan a quien no lleve la tarjeta. Aquí se vende la nave más avanzada y se refuerza el casco para salir al exterior.',
  'Estación Cobre':'Pequeña estación de servicio rodeada de campos de cobre. Mejoras para tu nave y poco más.','Estación Vega':'Estación de mejoras con la única tienda de armas de la región.','Estación Nova':'Estación de mejoras en el borde de los campos ricos.',
  'Estación Umbral':'La estación amarilla antes de Omega: prueba de pilotaje, tarjeta de acceso y la única fundición de la región, donde el mineral se convierte en lingotes.'};
-const mkFound=I=>{const k=I.raw?I.k:I.ing;if(!k)return'—';const L=FIELDS.filter(f=>f.tb&&f.tb.some(t=>t[0]===k)).map(f=>f.n);return L.length?L.join(' · '):'—'};
+const mkFound=I=>{const k=I.raw?I.k:I.ing;if(!k)return'—';const L=FIELDS.filter(f=>f.tb&&f.tb.some(t=>t[0]===k)).map(f=>f.n);if(k==='lz')return 'Jirón Lapislázuli (Nebulosa Zafiro)';if(k==='za')return 'Campo Zafiro (Nebulosa Zafiro)';return L.length?L.join(' · '):'—'};
 const mkFmt=v=>v>=100?Math.round(v)+'':v>=10?v.toFixed(1):v.toFixed(2);
 /* ---------- gráficos (SVG) ---------- */
 function mkSpark(h,col,w=70,hh=22){const mn=Math.min(...h),mx=Math.max(...h),r=Math.max(mx-mn,mx*.02,.01);const pts=h.map((v,i)=>(i/(h.length-1)*w).toFixed(1)+','+(hh-2-(v-mn)/r*(hh-4)).toFixed(1)).join(' ');
@@ -117,7 +119,7 @@ ${kv('Te pagan (aquí)',mkFmt(sP)+' cr/ud',I.k===mkSel?'#7dff9b':'')}${kv('Te co
   return h+`<div class=mkw><div class=mkl>${list}</div><div>${dt}</div></div>`}
 function hubBase(){const d=ship.docked,i=BASES.indexOf(d);
   const sv=[['Hangar','Cambia de nave y despega'],['Reparaciones','Chatarra primero, luego créditos (pestaña NAVE)'],['Economía','Compra y venta de minerales, lingotes y chatarra']];
-  if(d.small||d.n==='Estación Cobre')sv.push(['Mejoras','Mejoras de componentes de la nave']);if(d.n==='Estación Vega')sv.push(['Armas','Única tienda de armas']);
+  if(d.small||d.sty||d.n==='Estación Cobre')sv.push(['Mejoras','Mejoras de componentes de la nave']);if(d.n==='Estación Vega')sv.push(['Armas','Única tienda de armas']);
   if(d.n==='Base Beta'||d.n==='Base Omega')sv.push(['Tienda de naves',d.n==='Base Omega'?'La nave más avanzada: el Técnico':'2 naves a la venta']);
   if(d.n==='Base Omega')sv.push(['Refuerzo anti-implosión','Pestaña NAVE → Casco (30 lingotes + 3000 cr)']);
   if(d.n==='Estación Umbral')sv.push(['Fundición','Mineral crudo → lingotes (pestaña ECONOMÍA)'],['Prueba de acceso','Tarjeta para entrar en Base Omega']);
@@ -198,7 +200,18 @@ function hubWh(){mkInit();const d=ship.docked,chip=(t,v)=>`<span class=cc>${t}<b
    Para cambiar qué naves son compatibles, edita spuLaserOk / spuImpOk. */
 const spuLaserOk=t=>t.sh!=='e',spuImpOk=t=>true;
 const spuShips=()=>TYPES.map((t,i)=>({t,i})).filter(o=>o.t.own);
+/* ---- Base Zafiro: construcciones con plano (se desbloquean al recoger la baliza correspondiente) ---- */
+const ZB='Base Zafiro',ZGEAR={lz:30,za:50,sc:250},ZSNIP={lz:20,za:30,sc:150};
+const zHave=k=>k==='sc'?Math.floor(ship.scrap||0)+whGet('sc'):mkCargo(k)+whGet(k);
+function zTake(k,n){if(k==='sc'){const c=Math.min(n,Math.floor(ship.scrap||0));ship.scrap-=c;n-=c;if(n>0)whAdd('sc',-n);return}
+  const c=Math.min(n,mkCargo(k));if(c>0){ship.inv[k]-=c;if(ship.inv[k]<.001)delete ship.inv[k];ship.ore=Math.max(0,ship.ore-c);n-=c}if(n>0)whAdd(k,-n)}
+const zOk=C=>Object.keys(C).every(k=>zHave(k)>=C[k]),zNm=k=>k==='sc'?'chatarra':MIN[k][0].toLowerCase();
+const zCost=C=>Object.keys(C).map(k=>`<span style="color:${zHave(k)>=C[k]?'#7dff9b':'#ff6b6b'}">${C[k]} ${zNm(k)} (${zHave(k)})</span>`).join(' · ');
+const hasBpl=k=>!!(QX.bp&&QX.bp[k]);
 function upAct(a,k){try{const d=ship.docked;if(!d)return;const t=TYPES[+k];
+  if(a==='gb'){if(!t||d.n!==ZB||!hasBpl('gear')||t.gear)return;if(!zOk(ZGEAR))return toast('Faltan materiales: '+Object.keys(ZGEAR).map(q=>ZGEAR[q]+' de '+zNm(q)).join(', '));for(const q in ZGEAR)zTake(q,ZGEAR[q]);t.gear=1;QX.gr=(QX.gr|0)+1;toast('✔ Tren de aterrizaje construido e instalado en '+t.n);saveGame();return}
+  if(a==='sb'){if(d.n!==ZB||!hasBpl('laser')||WOWN.sniper)return;if(ship.cred<WP.sniper.pr)return toast('Créditos insuficientes: '+WP.sniper.pr+' cr');if(!zOk(ZSNIP))return toast('Faltan materiales: '+Object.keys(ZSNIP).map(q=>ZSNIP[q]+' de '+zNm(q)).join(', '));ship.cred-=WP.sniper.pr;for(const q in ZSNIP)zTake(q,ZSNIP[q]);WOWN.sniper=1;QX.snb=1;toast('✔ Rayo francotirador construido: equípalo en tus naves');saveGame();return}
+  if(a==='se'){if(!t||!WOWN.sniper)return;if(!spuLaserOk(t))return toast(t.n+' no es compatible con el francotirador');t.wp='sniper';toast('Francotirador equipado en '+t.n);saveGame();return}
   if(a==='wb'){if(d.n!=='Estación Vega')return toast('El láser se vende en Estación Vega');if(WOWN.laser)return;if(ship.cred<WP.laser.pr)return toast('Créditos insuficientes: '+WP.laser.pr+' cr');ship.cred-=WP.laser.pr;WOWN.laser=1;toast('Rayo láser comprado: equípalo en las naves compatibles')}
   else if(a==='we'){if(!t||!WOWN.laser)return;if(!spuLaserOk(t))return toast(t.n+' no es compatible con el láser');t.wp='laser';toast('Láser equipado en '+t.n)}
   else if(a==='wu'){if(t)t.wp='cannon'}
@@ -223,6 +236,17 @@ function hubUpg(){const d=ship.docked,isV=d.n==='Estación Vega',isO=d.n===OM.n,
   h+=`<div class=card2 style="border-color:#7de3ff"><b style="color:#7de3ff">REFUERZO ANTI-IMPLOSIÓN</b><div class=dim style="margin:6px 0">Fuera del aro de Alfa la presión es altísima. Este refuerzo suma +100 de resistencia al casco y permite salir. Se compra por nave en Base Omega.</div>${kv('Coste por nave',IMPH.l+' lingotes + '+IMPH.c+' cr',okH?'':'#ff6b6b')}`+(isO?'':'<div class=dim style="margin:4px 0">Se vende en Base Omega.</div>')+
     `<div style="border-top:1px solid #1d3550;margin:10px 0 4px"></div>`+L.map(o=>{const t=o.t,ok=spuImpOk(t);
     return `<div class=whr><i style="background:${t.col}"></i><b style="flex:1;min-width:90px">${t.n}</b>`+(!ok?'<span style="color:#ff9a4f">No compatible</span>':t.imp?'<span style="color:#7dff9b">✔ Equipado</span>':t.imq?`<span style="color:#7dff9b">Comprado</span><span class=whb>${sq('Equipar','data-mk="up:ie:'+o.i+'"')}</span>`:`<span class=whb>${isO?sq('Comprar','data-mk="up:ib:'+o.i+'"'+(okH?'':' disabled')):''}</span>`)+`</div>`}).join('')+`</div>`;
+  /* Base Zafiro: tren de aterrizaje y francotirador (solo si ya recogiste el plano en su baliza) */
+  const isZ=d.n===ZB;
+  if(hasBpl('gear')){const okG=zOk(ZGEAR);
+    h+=`<div class=card2 style="border-color:#ffdc78"><b style="color:#ffdc78">TREN DE ATERRIZAJE</b><div class=dim style="margin:6px 0">Plano de la baliza antigua. Dos patas retráctiles para el futuro sistema de aterrizaje en planetas. Mejora visual de la nave. Se construye por nave en Base Zafiro.</div><div class=kv><span style="opacity:.7">Coste por nave</span><b style="font-weight:400">${zCost(ZGEAR)}</b></div>`+(isZ?'':'<div class=dim style="margin:4px 0">Se construye en Base Zafiro.</div>')+
+      `<div style="border-top:1px solid #1d3550;margin:10px 0 4px"></div>`+L.map(o=>{const t=o.t;return `<div class=whr><i style="background:${t.col}"></i><b style="flex:1;min-width:90px">${t.n}</b>`+(t.gear?'<span style="color:#7dff9b">✔ Instalado</span>':`<span class=whb>${isZ?sq('Construir','data-mk="up:gb:'+o.i+'"'+(okG?'':' disabled')):''}</span>`)+`</div>`}).join('')+`</div>`}
+  if(hasBpl('laser')){const okS=zOk(ZSNIP)&&ship.cred>=WP.sniper.pr;
+    h+=`<div class=card2 style="border-color:#a98bff"><b style="color:#a98bff">${WP.sniper.n.toUpperCase()}</b><div class=dim style="margin:6px 0">${WP.sniper.d} Se construye una vez y sirve para todas tus naves compatibles.</div>`;
+    if(WOWN.sniper)h+='<div style="color:#7dff9b">✔ Construido</div>';
+    else h+=`<div class=kv><span style="opacity:.7">Coste</span><b style="font-weight:400"><span style="color:${ship.cred>=WP.sniper.pr?'#7dff9b':'#ff6b6b'}">${WP.sniper.pr} cr</span> · ${zCost(ZSNIP)}</b></div>`+(isZ?sq('Construir rayo francotirador','data-mk="up:sb:0"'+(okS?'':' disabled'),'width:100%;margin-top:8px'):'<div class=dim style="margin-top:6px">Se construye en Base Zafiro.</div>');
+    if(WOWN.sniper)h+=`<div style="border-top:1px solid #1d3550;margin:10px 0 4px"></div>`+L.map(o=>{const t=o.t,eq=t.wp==='sniper',ok=spuLaserOk(t);return `<div class=whr><i style="background:${t.col}"></i><b style="flex:1;min-width:90px">${t.n}</b>`+(!ok?'<span style="color:#ff9a4f">No compatible</span>':eq?`<span style="color:#7dff9b">Francotirador equipado</span><span class=whb>${sq('Volver a pulsos','data-mk="up:wu:'+o.i+'"')}</span>`:`<span class=dim>${t.wp==='laser'?'Láser':'Cañón de pulsos'}</span><span class=whb>${sq('Equipar','data-mk="up:se:'+o.i+'"')}</span>`)+`</div>`}).join('');
+    h+='</div>'}
   /* kits de flota */
   const okK=ing>=IMPF.l&&ship.cred>=IMPF.c;
   h+=`<div class=card2 style="border-color:#7de3ff"><b style="color:#7de3ff">REFUERZO DE FLOTA</b><div class=dim style="margin:6px 0">Kit para una nave de tu flota (+100 de resistencia y a salvo de la implosión). Se equipa en la pestaña FLOTA.</div>${kv('Kits en inventario',QX.fli|0)}${kv('Coste por kit',IMPF.l+' lingotes + '+IMPF.c+' cr',okK?'':'#ff6b6b')}`+(isO?sq('Comprar kit de flota','data-mk="up:kit:0"'+(okK?'':' disabled'),'width:100%;margin-top:8px'):'<div class=dim style="margin-top:6px">Se vende en Base Omega.</div>')+'</div>';

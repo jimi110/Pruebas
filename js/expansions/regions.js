@@ -105,13 +105,13 @@ function norm(d,R){
   const tier=cl(num(d.tier,1),0,4),A=d.asteroids||{},o={seed:num(d.seed,0)|0,tier,danger:cl(num(d.danger,tier),0,4),regen:Math.max(0,num(d.regenMin,30)),jobs:[],stations:[],anomalies:[],poi:[],enemies:[]},dn=R.m.density;
   let total=0;
   const flds=(Array.isArray(A.fields)?A.fields:[]).slice(0,60);
-  flds.forEach((f,i)=>{const n=Math.round(cl(num(f.count,0),0,5000)*dn);if(n<=0)return;total+=n;o.jobs.push({k:'f',n,x:num(f.x,R.m.x),y:num(f.y,R.m.y),rx:Math.max(50,num(f.rx,2000)),ry:Math.max(50,num(f.ry,2000)),rot:num(f.rot,0),tier:cl(num(f.tier,tier),0,4),ore:oreTab(f.ore,tier),nm:String(f.n||'Campo'),i})});
+  flds.forEach((f,i)=>{const n=Math.round(cl(num(f.count,0),0,5000)*dn);if(n<=0)return;total+=n;o.jobs.push({k:'f',n,x:num(f.x,R.m.x),y:num(f.y,R.m.y),rx:Math.max(50,num(f.rx,2000)),ry:Math.max(50,num(f.ry,2000)),rot:num(f.rot,0),tier:cl(num(f.tier,tier),0,4),ore:oreTab(f.ore,tier),nm:String(f.n||'Campo'),mv:f.move?1:0,mvs:cl(num(f.moveSpeed,1),.2,3),i})});
   if(A.scatter){const n=Math.round(cl(num(A.scatter.count,0),0,8000)*dn);if(n>0){total+=n;o.jobs.push({k:'s',n,tier:cl(num(A.scatter.tier,tier),0,4),ore:oreTab(A.scatter.ore,tier),i:flds.length})}}
   if(total>AIDS-1)throw new Error('demasiados asteroides en '+R.id);
   const S=(a,m)=>(Array.isArray(a)?a:[]).slice(0,m);
-  for(const s of S(d.stations,40))if(s&&s.n&&Number.isFinite(+s.x)&&Number.isFinite(+s.y))o.stations.push({n:String(s.n),x:+s.x,y:+s.y,r:cl(num(s.r,200),50,800),col:/^#[0-9a-f]{6}$/i.test(s.col)?s.col:'#7dff9b',tag:String(s.tag||'ESTACIÓN'),small:s.small?1:0,mult:cl(num(s.mult,1),.5,3),info:s.info?String(s.info):undefined});
+  for(const s of S(d.stations,40))if(s&&s.n&&Number.isFinite(+s.x)&&Number.isFinite(+s.y))o.stations.push({n:String(s.n),x:+s.x,y:+s.y,r:cl(num(s.r,200),50,800),col:/^#[0-9a-f]{6}$/i.test(s.col)?s.col:'#7dff9b',tag:String(s.tag||'ESTACIÓN'),small:s.small?1:0,mult:cl(num(s.mult,1),.5,3),info:s.info?String(s.info):undefined,sty:s.sty?String(s.sty).slice(0,12):undefined,gd:cl(num(s.guards,0)|0,0,8)});
   for(const a of S(d.anomalies,100))if(a&&Number.isFinite(+a.x)&&Number.isFinite(+a.y))o.anomalies.push({id:String(a.id||'a'+o.anomalies.length),t:a.t==='i'||a.t==='w'?a.t:'e',n:String(a.n||'Anomalía'),x:+a.x,y:+a.y,r:cl(num(a.r,600),60,8000),col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(a.col)?a.col:'120,255,170'});
-  for(const p of S(d.poi,100))if(p&&Number.isFinite(+p.x)&&Number.isFinite(+p.y))o.poi.push({id:String(p.id||'p'+o.poi.length),n:String(p.n||'Punto de interés'),x:+p.x,y:+p.y,col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(p.col)?p.col:'255,220,120'});
+  for(const p of S(d.poi,100))if(p&&Number.isFinite(+p.x)&&Number.isFinite(+p.y))o.poi.push({id:String(p.id||'p'+o.poi.length),n:String(p.n||'Punto de interés'),kind:p.kind==='gear'||p.kind==='laser'?p.kind:undefined,x:+p.x,y:+p.y,col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(p.col)?p.col:'255,220,120'});
   for(const e of S(d.enemies,300))if(e&&Number.isFinite(+e.x)&&Number.isFinite(+e.y))o.enemies.push({id:String(e.id||'e'+o.enemies.length),x:+e.x,y:+e.y,n:cl(num(e.n,1)|0,1,12),radius:cl(num(e.radius,1000),100,6000),tier:cl(num(e.tier,tier),0,4)});
   if(d.event&&typeof d.event==='object')o.event=d.event;
   o.total=total;return o}
@@ -131,7 +131,7 @@ function unload(R){
   if(R.st!=='ready')return;
   for(const[i,e]of R.act){e.dead=1;byId.delete(e.id)}R.act.clear();
   for(const[k,n]of[...live])if(k.startsWith(R.id+':')){live.delete(k)}
-  for(const b of R.stn){const i=BASES.indexOf(b);if(i>=0)BASES.splice(i,1)}R.stn=[];
+  for(const b of R.stn){const i=BASES.indexOf(b);if(i>=0)BASES.splice(i,1)}npcs=npcs.filter(n=>!n.zg);R.stn=[];
   R.det=null;R.ast=[];R.grid=new Map();R.build=null;R.done=false;R.sent.clear();R.todo=[];R.off=[];R.st='idle'}
 function trimCache(){
   const rd=LIST.filter(r=>r.st==='ready');if(rd.length<=MAXC)return;
@@ -152,7 +152,7 @@ function addAst(R,job,k){
   if(!ok)return;       // posición descartada (el índice se conserva: sigue siendo determinista)
   let q=rg(),mk='fe';for(const[o,w]of job.ore){if(q<w){mk=o;break}q-=w;mk=o}
   const r=20+rg()*30+job.tier*4,i=R.ast.length;
-  R.ast.push({x:Math.round(x),y:Math.round(y),r:Math.round(r*10)/10,m:mk,rot:rg()*TAU,j:job.i});
+  R.ast.push({x:Math.round(x),y:Math.round(y),r:Math.round(r*10)/10,m:mk,rot:rg()*TAU,j:job.i,mv:job.mv?job.mvs:0});
   const key=((Math.floor(x/CS)+1000)*4000)+(Math.floor(y/CS)+1000);let c=R.grid.get(key);if(!c)R.grid.set(key,c=[]);c.push(i)}
 function buildStep(R){const b=R.build;if(!b)return;const t0=performance.now();
   while(b.f<R.det.jobs.length){const job=R.det.jobs[b.f];
@@ -174,9 +174,33 @@ function planAst(R,pl){
 function spawnAst(R,i){
   const a=R.ast[i],rr=mul(h32(R.id+'#'+i)),sh=[];for(let k=0;k<9;k++)sh.push(.75+rr()*.4);
   const e={id:AID0+R.m.idx*AIDS+i,f:null,rg:R.id,ri:i,x:a.x,y:a.y,r:a.r,ore:a.r*1.1,m:a.m,rot:a.rot,sh};
+  if(a.mv){const an=rr()*TAU,sp=(35+rr()*60)*a.mv;e.mv=1;e.vx=Math.cos(an)*sp;e.vy=Math.sin(an)*sp;e.vr=(rr()-.5)*.6;e.ox=a.x;e.oy=a.y;e.fj=R.det.jobs.find(q=>q.k==='f'&&q.i===a.j)||null}
   asts.push(e);R.act.set(i,e);byId.set(e.id,e)}
 function markDep(R,i){R.dep.set(i,R.det&&R.det.regen>0?Date.now()+R.det.regen*60000:0)}
-function stepAst(R){
+/* ---- asteroides móviles (campos con "move":1): derivan dentro de su zona, rebotan en su borde y entre sí ----
+   El anfitrión / partida en solitario manda; el invitado integra el movimiento y se corrige con las posiciones del anfitrión. */
+const LEASH=1800;
+function stepMove(R,dt){
+  const L=[];for(const e of R.act.values())if(e.mv&&!e.dead)L.push(e);if(!L.length)return;
+  const guest=isGuest();
+  for(const e of L){
+    if(guest&&e.tx!=null){e.tx+=e.vx*dt;e.ty+=e.vy*dt;const k=Math.min(1,4*dt);e.x+=(e.tx-e.x)*k;e.y+=(e.ty-e.y)*k}
+    e.x+=e.vx*dt;e.y+=e.vy*dt;e.rot+=e.vr*dt;
+    const F=e.fj;
+    if(F){const cr=Math.cos(F.rot),sr=Math.sin(F.rot),dx=e.x-F.x,dy=e.y-F.y,lx=dx*cr+dy*sr,ly=-dx*sr+dy*cr,ax=F.rx*1.2-e.r,ay=F.ry*1.2-e.r,u=(lx/ax)**2+(ly/ay)**2;
+      if(u>1){const su=Math.sqrt(u),nx0=lx/(ax*ax),ny0=ly/(ay*ay),nl=Math.hypot(nx0,ny0)||1,nx=(nx0*cr-ny0*sr)/nl,ny=(nx0*sr+ny0*cr)/nl,l2x=lx/su,l2y=ly/su;
+        e.x=F.x+l2x*cr-l2y*sr;e.y=F.y+l2x*sr+l2y*cr;const vn=e.vx*nx+e.vy*ny;if(vn>0){e.vx-=2*vn*nx;e.vy-=2*vn*ny}}}
+    {const dx=e.x-e.ox,dy=e.y-e.oy,d=Math.hypot(dx,dy);if(d>LEASH){const nx=dx/d,ny=dy/d,vn=e.vx*nx+e.vy*ny;if(vn>0){e.vx-=2*vn*nx;e.vy-=2*vn*ny}}}}
+  if(guest)return;
+  for(let i=0;i<L.length;i++){const a=L[i];for(let j=i+1;j<L.length;j++){const b=L[j],dx=b.x-a.x;if(dx>140||dx<-140)continue;const dy=b.y-a.y;if(dy>140||dy<-140)continue;
+    const d=Math.hypot(dx,dy),rr=a.r+b.r;if(d>=rr||d<.01)continue;
+    const nx=dx/d,ny=dy/d,ma=a.r*a.r,mb=b.r*b.r,ov=rr-d;a.x-=nx*ov*mb/(ma+mb);a.y-=ny*ov*mb/(ma+mb);b.x+=nx*ov*ma/(ma+mb);b.y+=ny*ov*ma/(ma+mb);
+    const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv>=0)continue;
+    const jm=-(1.9)*rv/(1/ma+1/mb);a.vx-=jm*nx/ma;a.vy-=jm*ny/ma;b.vx+=jm*nx/mb;b.vy+=jm*ny/mb;
+    for(const q of[a,b]){const sp=Math.hypot(q.vx,q.vy);if(sp>150){q.vx*=150/sp;q.vy*=150/sp}}
+    if(-rv>25&&near(players(),a.x,a.y,2600))try{boom((a.x+b.x)/2,(a.y+b.y)/2,4,'#aab')}catch(e){}}}}
+function stepAst(R,dt){
+  stepMove(R,dt||0.016);
   // 1) detectar asteroides agotados/destruidos (cambio persistente)
   for(const[i,e]of R.act)if(e.dead||e.ore<=.01){R.act.delete(i);byId.delete(e.id);markDep(R,i)}
   // 2) suspender lejanos
@@ -202,6 +226,45 @@ function stepEn(R,pl,budget){
       const e=mkEn(R,g,key,x,y);npcs.push(e);live.set(key,e);made++}}
   return made}
 
+/* ---- guardias de base (campo "guards" de la estación): patrullan y HUYEN al verte (el jefe de la región ya cayó) ---- */
+const SEE=2300;let guardMsg=0;
+function stepGuards(R,pl,dt){
+  if(isGuest()||lock)return;
+  for(const b of R.stn){if(!b.gd)continue;
+    let gs=npcs.filter(n=>n.zg===b.n);
+    const any=near(pl,b.x,b.y,9000);
+    if(!any){if(gs.length&&!near(pl,b.x,b.y,12000)){npcs=npcs.filter(n=>n.zg!==b.n)}continue}
+    for(let i=gs.length;i<b.gd;i++){const a=i/b.gd*TAU,e=mk('g',b.x+Math.cos(a)*(b.r+330),b.y+Math.sin(a)*(b.r+330),b);e.gv=1;e.zg=b.n;e.hp=e.max=260;e.oa=a;e.fm0=1;npcs.push(e);gs.push(e)}
+    for(const n of gs){
+      let tp=null,td=SEE;for(const p of pl){const d=Math.hypot(p.x-n.x,p.y-n.y);if(d<td){td=d;tp=p}}
+      let vx,vy;
+      if(tp&&!(ship.docked&&tp.x===ship.x&&tp.y===ship.y)){const a=Math.atan2(n.y-tp.y,n.x-tp.x);vx=Math.cos(a)*330;vy=Math.sin(a)*330;
+        if(!guardMsg&&Math.hypot(ship.x-n.x,ship.y-n.y)<SEE&&state==='play'){guardMsg=1;toast('🛡 Los guardias de '+b.n+' huyen al verte: derrotaste a su jefe')}}
+      else{n.oa+=.22*dt;const R0=b.r+330,tx=b.x+Math.cos(n.oa)*R0,ty=b.y+Math.sin(n.oa)*R0,a=Math.atan2(ty-n.y,tx-n.x),d=Math.hypot(tx-n.x,ty-n.y),sp=Math.min(200,d*1.2);vx=Math.cos(a)*sp;vy=Math.sin(a)*sp}
+      const k=Math.min(1,2.5*dt);n.vx+=(vx-n.vx)*k;n.vy+=(vy-n.vy)*k;n.x+=n.vx*dt;n.y+=n.vy*dt;
+      if(Math.hypot(n.vx,n.vy)>20)n.a=Math.atan2(n.vy,n.vx)}}}
+
+/* ---- balizas con plano: se recogen acercándose (progreso por jugador, en QX.bp) ---- */
+const BPI={gear:{n:'Tren de aterrizaje',col:'255,220,120',m:'📐 Plano obtenido: TREN DE ATERRIZAJE. Constrúyelo en la Base Zafiro (pestaña MEJORAS) con lapislázuli, zafiro y chatarra'},
+  laser:{n:'Rayo francotirador',col:'169,139,255',m:'📐 Plano obtenido: RAYO FRANCOTIRADOR. Constrúyelo en la Base Zafiro (pestaña MEJORAS)'}};
+const hasBp=k=>!!(typeof QX!=='undefined'&&QX.bp&&QX.bp[k]);
+function stepZ(R){
+  if(state!=='play'||ship.docked||ship.dead>0)return;
+  for(const p of R.det.poi){if(!p.kind||hasBp(p.kind)||Math.hypot(ship.x-p.x,ship.y-p.y)>230)continue;
+    QX.bp=QX.bp||{};QX.bp[p.kind]=1;toast(BPI[p.kind].m);try{boom(p.x,p.y,18,'#ffe08a')}catch(e){}try{saveGame()}catch(e){}}}
+function drawBeacon(p){
+  const k=p.kind,got=hasBp(k),c=BPI[k].col,t=time,pu=.5+.5*Math.sin(t*3+p.x);
+  g.save();g.translate(p.x,p.y);
+  let q=g.createRadialGradient(0,0,10,0,0,150);q.addColorStop(0,'rgba('+c+','+(got?.12:.32)+')');q.addColorStop(1,'rgba('+c+',0)');g.fillStyle=q;g.fillRect(-150,-150,300,300);
+  if(!got){const e=(t*.7)%1;g.strokeStyle='rgba('+c+','+(.6*(1-e))+')';g.lineWidth=3;g.beginPath();g.arc(0,0,40+e*170,0,TAU);g.stroke()}
+  g.save();g.rotate(t*(got?.15:.5));g.strokeStyle='rgba('+c+','+(got?.45:.9)+')';g.lineWidth=5;g.beginPath();g.arc(0,0,52,0,TAU);g.stroke();
+  for(let i=0;i<4;i++){g.save();g.rotate(i*Math.PI/2);g.fillStyle='#1a2a40';g.fillRect(46,-9,24,18);g.strokeStyle='rgba('+c+',.8)';g.lineWidth=2;g.strokeRect(46,-9,24,18);g.fillStyle=Math.sin(t*4+i*1.6)>0&&!got?'rgb('+c+')':'#3a3320';g.fillRect(63,-3,5,6);g.restore()}g.restore();
+  g.beginPath();for(let i=0;i<6;i++)g.lineTo(Math.cos(i*Math.PI/3)*30,Math.sin(i*Math.PI/3)*30);g.closePath();g.fillStyle='#16263b';g.fill();g.strokeStyle='#4a6c90';g.lineWidth=3;g.stroke();
+  g.fillStyle='#0c1624';g.beginPath();g.arc(0,0,19,0,TAU);g.fill();
+  g.fillStyle='rgba('+c+','+(got?.35:.6+.4*pu)+')';g.beginPath();g.moveTo(0,-15);g.lineTo(10,0);g.lineTo(0,15);g.lineTo(-10,0);g.closePath();g.fill();
+  g.strokeStyle='rgba(255,255,255,'+(got?.3:.8)+')';g.lineWidth=1.5;g.stroke();
+  g.restore()}
+
 /* ---- descubrimientos (anomalías y puntos de interés) ---- */
 function stepFound(R,pl){
   for(const a of R.det.anomalies)if(!R.fd.has(a.id)&&near(pl,a.x,a.y,a.r+400)){R.fd.add(a.id);toast('📡 Descubierto: '+a.n)}
@@ -220,7 +283,7 @@ function update(dt){
   for(const R of ready){
     if(lock){if(R.act.size){for(const e of R.act.values()){e.dead=1;byId.delete(e.id)}R.act.clear()}continue}
     if(plan)planAst(R,pl);
-    stepAst(R);stepEn(R,pl,2);if(plan)stepFound(R,pl)}
+    stepAst(R,dt);stepEn(R,pl,2);stepGuards(R,pl,dt);if(plan)stepZ(R);if(plan)stepFound(R,pl)}
   if(lock)EV(r=>r.abort());else EV(r=>r.update(dt,CTX));
   // 3) tareas lentas (0.5 s): región actual, carga anticipada, caducidad, caché
   T.slow-=dt;if(T.slow>0)return;T.slow=.5;
@@ -325,7 +388,7 @@ function drawWorld(){
     for(const a of R.det.anomalies){if(!vis(a.x,a.y,a.r+200))continue;const pu=.8+.2*Math.sin(time*2+a.x);g.globalAlpha=pu;g.drawImage(sprite(a.col),a.x-a.r,a.y-a.r,a.r*2,a.r*2);g.globalAlpha=1;
       if(a.t==='i'){g.strokeStyle='rgba('+a.col+',.5)';g.lineWidth=1.5;for(let i=0;i<5;i++){const t=time*1.5+i*1.26+a.y,r=a.r*(.3+.15*i);g.beginPath();g.moveTo(a.x+Math.cos(t)*r,a.y+Math.sin(t)*r);g.lineTo(a.x+Math.cos(t+.4)*(r+40),a.y+Math.sin(t+.4)*(r+40));g.stroke()}}
       txt(a.n.toUpperCase(),a.x,a.y-a.r*.5,'rgba('+a.col+',.8)','center',10)}
-    for(const p of R.det.poi){if(!vis(p.x,p.y,200))continue;const k=R.fd.has(p.id),r=14+3*Math.sin(time*3);g.save();g.translate(p.x,p.y);g.rotate(time*.6);g.strokeStyle='rgba('+p.col+','+(k?.5:.9)+')';g.lineWidth=2;g.beginPath();g.moveTo(0,-r);g.lineTo(r,0);g.lineTo(0,r);g.lineTo(-r,0);g.closePath();g.stroke();g.restore();txt(p.n,p.x,p.y-26,'rgba('+p.col+',.85)','center',11)}}}
+    for(const p of R.det.poi){if(!vis(p.x,p.y,200))continue;if(p.kind){drawBeacon(p);txt((hasBp(p.kind)?'Baliza · plano recogido':'Baliza · plano: '+BPI[p.kind].n),p.x,p.y-90,'rgba('+p.col+',.9)','center',12);continue}const k=R.fd.has(p.id),r=14+3*Math.sin(time*3);g.save();g.translate(p.x,p.y);g.rotate(time*.6);g.strokeStyle='rgba('+p.col+','+(k?.5:.9)+')';g.lineWidth=2;g.beginPath();g.moveTo(0,-r);g.lineTo(r,0);g.lineTo(0,r);g.lineTo(-r,0);g.closePath();g.stroke();g.restore();txt(p.n,p.x,p.y-26,'rgba('+p.col+',.85)','center',11)}}}
 
 /* ============================== PERSISTENCIA ============================== */
 function applyState(){for(const R of LIST){const s=SV[R.id];if(!s)continue;
@@ -355,11 +418,13 @@ function mpDiff(full){
   for(const R of LIST){if(R.st!=='ready')continue;
     for(const[i,e]of R.act){const last=R.sent.has(i)&&!full?R.sent.get(i):e.r*1.1;if(Math.abs(e.ore-last)>.05){ore.push([e.id,+e.ore.toFixed(2)]);R.sent.set(i,e.ore)}}
     for(const[i]of R.dep){if(!R.sent.has('d'+i)||full){R.sent.set('d'+i,1);(dep[R.id]=dep[R.id]||[]).push(i)}}}
+  const mv=[];for(const R of LIST){if(R.st!=='ready')continue;for(const e of R.act.values())if(e.mv&&!e.dead)mv.push([e.id,Math.round(e.x),Math.round(e.y),+e.vx.toFixed(1),+e.vy.toFixed(1)])}
   const ev=EV(r=>r.mpDiff(full));
-  if(!ore.length&&!Object.keys(dep).length&&!ev)return null;return{o:ore,d:dep,ev:ev||undefined}}
+  if(!ore.length&&!Object.keys(dep).length&&!ev&&!mv.length)return null;return{o:ore,d:dep,ev:ev||undefined,mv:mv.length?mv:undefined}}
 function mpApply(D){
   if(!D||lock)return;
   if(D.ev)EV(r=>r.mpApply(D.ev));
+  for(const q of Array.isArray(D.mv)?D.mv:[]){const e=byId.get(q[0]);if(e&&e.mv){e.vx=+q[3]||0;e.vy=+q[4]||0;if(e.tx==null){e.x=+q[1];e.y=+q[2]}e.tx=+q[1];e.ty=+q[2]}}
   for(const[id,ore]of D.o||[]){const e=byId.get(id);if(e){e.ore=ore;if(ore<=.01)e.dead=1}}
   for(const id in D.d||{}){const R=REG.get(id);if(!R)continue;for(const i of D.d[id]){if(!R.dep.has(i)){R.dep.set(i,R.det&&R.det.regen>0?Date.now()+R.det.regen*60000:0)}const e=R.act.get(i);if(e){e.dead=1;R.act.delete(i);byId.delete(e.id)}}}}
 function mpHash(h){hostHash=String(h)}
@@ -371,6 +436,11 @@ try{if(typeof window!=='undefined'&&window.__RGS)loadSave(window.__RGS)}catch(e)
 return{
   update,drawMap,drawWorld,rimWorld,sumA,sumName,minZoom,drawMini:(X,Y,s,m)=>EV(r=>r.drawMini&&r.drawMini(X,Y,s,m)),inAlfa:(x,y)=>!LIST.some(R=>!R.m.builtin&&inside(R.m,x,y,0)),
   cleared:id=>!!EV(r=>r.cleared(id)),locked:()=>!!EV(r=>r.lockJump()),
+  at:(x,y)=>{const R=regAt(x,y);return R?R.id:null},
+  stnPos:n=>{for(const R of LIST){const b=R.stn.find(s=>s.n===n);if(b)return{x:b.x,y:b.y,n:b.n}}return null},
+  poiPos:(id,pid)=>{const R=REG.get(id),p=R&&R.det&&R.det.poi.find(q=>q.id===pid);return p?{x:p.x,y:p.y}:null},
+  randPt:id=>{const R=REG.get(id);if(!R||!R.det)return null;const fs=R.det.jobs.filter(j=>j.k==='f');if(!fs.length)return null;const f=fs[Math.floor(Math.random()*fs.length)],a=Math.random()*TAU,d=Math.sqrt(Math.random())*.8,ex=Math.cos(a)*d*f.rx,ey=Math.sin(a)*d*f.ry,cr=Math.cos(f.rot),sr=Math.sin(f.rot);return{x:Math.round(f.x+ex*cr-ey*sr),y:Math.round(f.y+ex*sr+ey*cr),n:f.nm}},
+  found:(id,fid)=>{const R=REG.get(id);return !!(R&&R.fd.has(fid))},
   vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
   debug:()=>({ev:evSt,evd:EV(r=>r.debug()),regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,

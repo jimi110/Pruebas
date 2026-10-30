@@ -66,6 +66,17 @@ function worldUpd(dt){if(mpSlave()){spawnT=3;cmT=1e9;GEV.t=1e9}RGH(r=>r.update(d
     else for(const n of npcs)if(n.team==='e'&&n.hp>0&&hit(n,b)){b.life=0;if(mpSlave()||b.gh){boom(b.x,b.y,5,'#f66');break}n.hp-=b.d;n.lh=time;if(b.own==='p'&&!b.by){lastShot=n;lastShotT=time}boom(b.x,b.y,5,'#f66');
       if(n.hp<=0){boom(n.x,n.y,26,'#ff8a5c');for(let i=0;i<(n.boss?14:3);i++)loot.push({x:n.x+rnd(-25,25),y:n.y+rnd(-25,25),v:(n.boss?6:2)+((Math.random()*4)|0),life:120});if(b.own==='p'&&!b.wg){if(b.by)mpKill(b.by,n);else{cxFind(n);ship.cred+=n.boss?250:20;toast(n.boss?'¡Jefe pirata destruido! +250 cr':'Pirata destruido: +20 cr')}}}break}}
   bullets=bullets.filter(b=>b.life>0);for(const n of npcs)if(n.hp<=0&&n.team==='e'&&!n.kc){n.kc=1;qEv('kill');BAL.st.lk=time}npcs=npcs.filter(n=>n.hp>0);}
+/* Rayo francotirador: fija la mira (línea roja ~0,9 s) y dispara un rayo instantáneo de gran alcance; recarga lenta */
+function snStep(dt,mf,aA,tg){
+  const aim=()=>aA?lead(ship,tg,7000):fireTouch&&!fireOn?(tg?lead(ship,tg,7000):ship.a):(mouse?Math.atan2(w2y(mouse.y)-ship.y,w2x(mouse.x)-ship.x):ship.a);
+  if(ship.snT>0){
+    if(!(mf||aA)&&ship.snT>.3){ship.snT=0;return}
+    ship.snT-=dt;if(ship.snT>.25)ship.snA=aim();
+    if(ship.snT<=0){ship.snT=0;const a=ship.snA,q=bl(ship,a,'p',T.dmg*8*(Math.random()<crtV()?2:1));
+      q.vx=(ship.vx||0)+Math.cos(a)*7000;q.vy=(ship.vy||0)+Math.sin(a)*7000;q.life=.65;q.lz=1;q.sn=1;bullets.push(q);
+      ship.snB={x:ship.x,y:ship.y,a,t:0};ship.cd=3.4/Math.max(.3,eff('wpn'));qEv('shot')}
+    return}
+  if((mf||aA)&&ship.cd<=0&&eff('wpn')&&!ship.ovh){ship.snT=.9;ship.snA=aim()}}
 function upd(dt){hgTick(dt);if(typeof mkTick==='function')try{mkTick(dt);hubSync()}catch(e){console.warn('[centro de base]',e)}if(state!=='menu'){qTick(dt);trlTick(dt);sczTick();if(state==='play'||(MP.role&&(state==='pause'||state==='ship')))shipCol(dt)}
   for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);
   for(const q of sucks){q.px=q.x;q.py=q.y;q.life-=dt;const k=Math.min(1,9*dt);q.x+=(ship.x-q.x)*k;q.y+=(ship.y-q.y)*k;if(dist(q,ship)<14)q.life=0}sucks=sucks.filter(q=>q.life>0);
@@ -97,8 +108,8 @@ function upd(dt){hgTick(dt);if(typeof mkTick==='function')try{mkTick(dt);hubSync
   {const vm=Math.hypot(ship.vx,ship.vy),vc=mxB*(T.sh==='e'?tmx():1.6)+60;if(vm>vc&&!CFG.ie){const f=Math.max(vc/vm,1-1.5*dt);ship.vx*=f;ship.vy*=f}}
   ship.x+=ship.vx*dt;ship.y+=ship.vy*dt;if(state==='play')qEv('dst',Math.hypot(ship.vx,ship.vy)*dt);
   if(!ship.docked&&!shSafe())for(const a of asts){const dx=ship.x-a.x,dy=ship.y-a.y,d=Math.hypot(dx,dy),Rr=a.r+16;
-    if(d<Rr&&d>0){const nx=dx/d,ny=dy/d,vn=ship.vx*nx+ship.vy*ny;ship.x=a.x+nx*Rr;ship.y=a.y+ny*Rr;
-      if(vn<0){ship.vx-=1.5*vn*nx;ship.vy-=1.5*vn*ny;if(ship.cool<=0&&-vn>50){ship.cool=.6;ship.dest=null;hurt(-vn*.08,'⚠ Choque con asteroide: la nave recibe daño',Math.atan2(-ny,-nx));boom(ship.x-nx*16,ship.y-ny*16,8,'#ffb347')}}}}
+    if(d<Rr&&d>0){const nx=dx/d,ny=dy/d,vn=(ship.vx-(a.vx||0))*nx+(ship.vy-(a.vy||0))*ny;ship.x=a.x+nx*Rr;ship.y=a.y+ny*Rr;
+      if(vn<0){ship.vx-=1.5*vn*nx;ship.vy-=1.5*vn*ny;if(a.mv){a.vx+=.35*vn*nx;a.vy+=.35*vn*ny}if(ship.cool<=0&&-vn>50){ship.cool=.6;ship.dest=null;hurt(-vn*.08,'⚠ Choque con asteroide: la nave recibe daño',Math.atan2(-ny,-nx));boom(ship.x-nx*16,ship.y-ny*16,8,'#ffb347')}}}}
   ship.inB=ship.inA;ship.inA=0;for(const o of ANOM){o.cd=Math.max(0,(o.cd||0)-dt);const d=dist(ship,o);if(d<2000){if(!o.found&&MP.role)mpBc('af',{i:ANOM.indexOf(o)});o.found=1}if(o.t!=='w'){const q=d<o.r0*3?o.r0*1.8:o.r0;o.r+=(q-o.r)*Math.min(1,.8*dt)}
     if(d<o.r&&!ship.docked&&!shSafe()){if(!o.in){o.in=1;if(o.t==='e')toast('Nube de energía: salto recargándose');else if(o.t==='i')toast('¡Campo de iones! Escudo drenándose')}
       if(o.t!=='w'){ship.inA=1;const k=o.t==='i'?260:150,px=(o.x-ship.x)/Math.max(d,1),py=(o.y-ship.y)/Math.max(d,1);ship.vx+=px*k*dt;ship.vy+=py*k*dt}if(o.t==='e')ship.en=Math.min(100,ship.en+22*dt);
@@ -114,14 +125,15 @@ function upd(dt){hgTick(dt);if(typeof mkTick==='function')try{mkTick(dt);hubSync
   // torreta automática
   ship.cd-=dt;let tg=null,td=560;for(const n of npcs)if(n.team==='e'||(n.boss&&n.evs&&n.hp>0)){const d=dist(n,ship);if(d<td){td=d;tg=n}}
   if(ship.lock&&(ship.lock.hp<=0||!npcs.includes(ship.lock)||dist(ship.lock,ship)>1500))ship.lock=ship.orbit=null;if(ship.lock&&dist(ship.lock,ship)<700)tg=ship.lock;
-  if(T.sh==='e'&&T.wp==='laser')T.wp='cannon';LZ=T.wp==='laser'&&WOWN.laser;ship.heat=Math.max(0,(ship.heat||0)-30*dt);if(ship.ovh&&ship.heat<=25)ship.ovh=0;
+  if(T.sh==='e'&&(T.wp==='laser'||T.wp==='sniper'))T.wp='cannon';const SNP=T.wp==='sniper'&&WOWN.sniper;if(!SNP)ship.snT=0;LZ=T.wp==='laser'&&WOWN.laser;ship.heat=Math.max(0,(ship.heat||0)-30*dt);if(ship.ovh&&ship.heat<=25)ship.ovh=0;
   const mf=fireOn||fireTouch,aA=!mf&&tg&&T.md.includes('atk')&&!!mode.atk&&(ship.en>=1||CFG.ie);if(!mf&&tg&&T.md.includes('atk')&&mode.atk&&ship.en<1&&!CFG.ie&&warnT<=0){warnT=6;toast('Sin energía: el modo Ataque se pausa')}
-  if((mf||aA)&&eff('wpn')){if(ship.cd<=0&&!ship.ovh){ship.cd=(LZ?.07:T.rate)/eff('wpn');if(aA&&!CFG.ie)ship.en=Math.max(0,ship.en-.5*ship.cd);const ls=LZ?3200:900,a=aA?lead(ship,tg,ls):fireTouch&&!fireOn?(tg?lead(ship,tg,ls):ship.a):(mouse?Math.atan2(w2y(mouse.y)-ship.y,w2x(mouse.x)-ship.x):ship.a);const aa=a+(LZ?rnd(-.004,.004):rnd(-.02,.02)),q=bl(ship,aa,'p',(LZ?T.dmg*1.6:T.dmg)*(Math.random()<crtV()?2:1));if(LZ){q.vx=(ship.vx||0)+Math.cos(aa)*3200;q.vy=(ship.vy||0)+Math.sin(aa)*3200;q.life=.45;q.lz=1;ship.heat+=4.5;if(ship.heat>=100){ship.ovh=1;toast('⚠ Láser sobrecalentado')}}bullets.push(q);qEv('shot')}}
+  if(SNP){snStep(dt,mf,aA,tg)}
+  else if((mf||aA)&&eff('wpn')){if(ship.cd<=0&&!ship.ovh){ship.cd=(LZ?.07:T.rate)/eff('wpn');if(aA&&!CFG.ie)ship.en=Math.max(0,ship.en-.5*ship.cd);const ls=LZ?3200:900,a=aA?lead(ship,tg,ls):fireTouch&&!fireOn?(tg?lead(ship,tg,ls):ship.a):(mouse?Math.atan2(w2y(mouse.y)-ship.y,w2x(mouse.x)-ship.x):ship.a);const aa=a+(LZ?rnd(-.004,.004):rnd(-.02,.02)),q=bl(ship,aa,'p',(LZ?T.dmg*1.6:T.dmg)*(Math.random()<crtV()?2:1));if(LZ){q.vx=(ship.vx||0)+Math.cos(aa)*3200;q.vy=(ship.vy||0)+Math.sin(aa)*3200;q.life=.45;q.lz=1;ship.heat+=4.5;if(ship.heat>=100){ship.ovh=1;toast('⚠ Láser sobrecalentado')}}bullets.push(q);qEv('shot')}}
   else if(tg&&ship.cd<=0&&on('def')&&eff('wpn')){ship.cd=T.rate*2.6/eff('wpn');bullets.push(bl(ship,lead(ship,tg)+rnd(-.03,.03),'p',T.dmg*.6))}
   // minado
   ship.beam=null;
   if(!ship.docked&&ship.ore<T.cargo&&on('col')&&eff('min')){if(ship.mt&&!canMine(ship.mt))ship.mt=null;let b=ship.mt&&dist(ship.mt,ship)<260?ship.mt:null;
-    if(b){const m=Math.min(b.ore,T.mine*2*eff('min')*dt,T.cargo-ship.ore);b.ore-=m;ship.ore+=m;ship.inv[b.m]=(ship.inv[b.m]||0)+m;mpMined(b.id,m);qEv('ore',b.m,m);ship.beam={x:b.x,y:b.y,c:'#ffd166'};mineFx(b,MIN[b.m]?MIN[b.m][1]:'#ffd166',dt,b.r);if(b.ore<=.01){b.dead=1;boom(b.x,b.y,16,'#99a');if(!mpSlave())for(let i=0;i<2;i++)loot.push({x:b.x+rnd(-20,20),y:b.y+rnd(-20,20),v:1+((Math.random()*3)|0),life:120})}}}
+    if(b){const m=Math.min(b.ore,T.mine*2*eff('min')*dt,T.cargo-ship.ore);b.ore-=m;ship.ore+=m;ship.inv[b.m]=(ship.inv[b.m]||0)+m;mpMined(b.id,m);qEv('ore',b.m,m);ship.beam={x:b.x,y:b.y,c:'#ffd166'};mineFx(b,MIN[b.m]?MIN[b.m][1]:'#ffd166',dt,b.r);if(b.ore<=.01){b.dead=1;if(b.mv)qEv('mvd');boom(b.x,b.y,16,'#99a');if(!mpSlave())for(let i=0;i<2;i++)loot.push({x:b.x+rnd(-20,20),y:b.y+rnd(-20,20),v:1+((Math.random()*3)|0),life:120})}}}
   else if(ship.ore>=T.cargo-.01&&!ship.full){ship.full=1;toast('Bodega llena: vuelve a una base')}
   if(ship.ore<T.cargo-1)ship.full=0;
   asts=asts.filter(a=>!a.dead);
