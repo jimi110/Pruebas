@@ -288,7 +288,7 @@ function drawMap(X,Y,M){
       if(f>0){g.save();g.globalAlpha=f;g.lineJoin='round';
         pathShape(m,X,Y,s);g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba('+c+',.13)';g.fill();
         g.setLineDash([10,6]);g.lineWidth=2;g.strokeStyle='rgba('+c+',.85)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);g.restore()}
-    }else{g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([])}
+    }else{const f=sumF(s);if(f>0){g.save();g.globalAlpha=f;g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);g.restore()}}   /* borde de la zona interior (Alfa): como el resto, se funde al acercar el zoom */
     if(!m.builtin&&px>140&&R.st!=='ready')R.want=clock;                       // el mapa pide el detalle cuando se acerca el zoom
     const fs=m.builtin?0:sumF(s);                                             // factor de resumen (igual que Alfa)
     if(fs>=1){}                                                               // zona resumida: no se dibuja nada de dentro
