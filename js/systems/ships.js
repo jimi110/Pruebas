@@ -83,7 +83,7 @@ var wLast='';
 function wRender(){const F=Object.keys(W_F),B=Object.keys(W_B),n=ownN();
  const card=(w,wi)=>{const t=TYPES[w.ti],hp=clamp(w.hp/w.max,0,1),sh=w.smax?clamp((w.shd||0)/w.smax,0,1):0,d=dist(w,ship),dk=d<1000?Math.round(d)+' m':km(d),near=w.st==='follow'&&d<1500;
   return `<div class="fcd" style="border-color:${w.own?w.col:'#556'}"><div class="fh2"><b style="color:${w.col}">${w.n}</b><span>${w.own?'':'(sin unir) · '}${wLbl(w)}</span></div><div class="fbr"><i><b style="width:${hp*100}%;background:#ff6b6b"></b></i><i><b style="width:${sh*100}%;background:#5fd0ff"></b></i></div><div style="font-size:10.5px;opacity:.7">Casco ${Math.ceil(w.hp)}/${w.max} · Distancia ${dk}</div>
-  <div class="fbt">${w.own&&ship.wreck?`<button class="sq" data-w="call:${wi}" ${wCan(w)?'':'disabled'}>Pedir ayuda</button>`:''}<button class="sq" data-w="ord:${wi}">Órdenes…</button></div></div>`};
+  <div class="fbt">${w.own&&ship.wreck?`<button class="sq" data-w="call:${wi}" ${wCan(w)?'':'disabled'}>Pedir ayuda</button>`:''}<button class="sq" data-w="inf:${wi}">Órdenes e información</button></div></div>`};
  const own=wing.map((w,i)=>[w,i]).filter(q=>q[0].own),oth=wing.map((w,i)=>[w,i]).filter(q=>!q[0].own&&q[0].st!=='guard');
  const fb=B.map(k=>`<button class="sq${WG.b===k?' on':''}" data-w="b:${k}">${W_B[k]}</button>`).join(''),
  ff=F.map(k=>{const sl=WTF[k];return `<button class="sq fm2${WG.f===k?' on':''}" data-w="f:${k}"><svg viewBox="-190 -190 380 380" width="46" height="46"><g transform="scale(1.9)">${WTSH('#cfe8ff')}</g>${sl.map(q=>`<g transform="translate(${q[0]*.55},${q[1]*.55}) scale(1.4)">${WTSH('#7dff9b')}</g>`).join('')}</svg><span>${W_F[k]}</span></button>`}).join('');
@@ -123,22 +123,23 @@ var aiW=null,aiB=0;
 $('ui').insertAdjacentHTML('beforeend','<div id="aInfo" class="hide"></div>');
 const baseList=a=>BASES.filter(b=>(b===A||known(b,b.r+300))&&(b.n.indexOf('Omega')<0||QX.card)).sort((p,q)=>dist(a,p)-dist(a,q));
 var avV=null,avT=0;
-function wInfoOpen(w){avV=null;aiW=w;aiB=0;const t=TYPES[w.ti];$('aInfo').classList.remove('hide');
+function wInfoOpen(w){{const c=$('ctx');if(c){c.classList.add('hide');c.dataset.src=''}}avV=null;aiW=w;aiB=0;const t=TYPES[w.ti];$('aInfo').classList.remove('hide');
  $('aInfo').innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#4fd1ff;letter-spacing:.12em">'+(w.svc?'NAVE DE AYUDA':'NAVE ALIADA')+'</b><button class="sq" data-k="x" style="position:static;padding:8px 12px">Cerrar</button></div>'
  +'<div class=card2><h2 id="aiN" style="margin:0 0 2px;color:'+w.col+'"></h2><div style="opacity:.7">'+(w.rl||t.r)+'</div><div id="aiS" style="margin-top:4px;letter-spacing:.1em"></div></div>'
  +'<div class=card2><div class=kv><span style="opacity:.7">Casco</span><b id="aiHt"></b></div><div class=bb style="height:12px"><b id="aiHb" style="background:#ff6b6b"></b></div><div class=kv><span style="opacity:.7">Escudo</span><b id="aiSt"></b></div><div class=bb style="height:12px"><b id="aiSb" style="background:#4fd1ff"></b></div><div class=kv><span style="opacity:.7">Estado</span><b id="aiE"></b></div></div>'
  +'<div class=card2><div class=kv><span style="opacity:.7">Orden</span><b id="aiO"></b></div><div class=kv><span style="opacity:.7">Velocidad</span><b id="aiV"></b></div><div class=kv><span style="opacity:.7">Distancia a ti</span><b id="aiD"></b></div><div class=kv><span style="opacity:.7">Llegada</span><b id="aiL2"></b></div></div><div id="aiAct"></div>';aiAct();aiRender()}
 function aiAct(){const w=aiW;if(!w)return;let h='';if(w.svc||w.st==='rescue'){$('aiAct').innerHTML='';return}if(w.st==='guard')h+='<button class="sq" data-k="u" style="position:static;width:100%;margin-top:8px">Unirse a tu formación · '+PRC[w.ti]+' cr</button>';
  else{if(ship.wreck)h+='<button class="sq" data-k="r" style="position:static;width:100%;margin-top:8px">Rescate</button>';else if(w.st!=='follow')h+='<button class="sq" data-k="f" style="position:static;width:100%;margin-top:8px">Seguirme</button>';else h+='<button class="sq dng" data-k="d" style="position:static;width:100%;margin-top:8px">'+(w.bs?'Volver a '+w.bs.n:'Dejar de seguir')+'</button>';h+='<button class="sq'+(aiB?' on':'')+'" data-k="b" style="position:static;width:100%;margin-top:8px">Enviar a una base… '+(aiB?'▲':'▼')+'</button>';
-  if(aiB)h+='<div class=card2 style="margin:4px 0">'+baseList(w).map((b,i)=>'<button class="sq" data-k="s" data-i="'+i+'" style="position:static;width:100%;margin:3px 0;padding:9px 10px;font-size:12px;text-align:left">'+b.n+' · '+km(dist(w,b))+'</button>').join('')+'</div>'}$('aiAct').innerHTML=h}
+  if(aiB)h+='<div class=card2 style="margin:4px 0">'+baseList(w).map((b,i)=>'<button class="sq" data-k="s" data-i="'+i+'" style="position:static;width:100%;margin:3px 0;padding:9px 10px;font-size:12px;text-align:left">'+b.n+' · '+km(dist(w,b))+'</button>').join('')+'</div>';if(typeof fmInfoUI==='function')h+=fmInfoUI(w)}$('aiAct').innerHTML=h}
 function wInfoClose(){aiW=null;aiB=0;$('aInfo').classList.add('hide')}
 $('aInfo').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!aiW)return;const k=b.dataset.k;
+ if(typeof fmInfoClick==='function'&&fmInfoClick(k,b)){aiAct();return}
  if(k==='x')wInfoClose();else if(k==='r'){wCallOne(aiW);aiAct()}else if(k==='f'){setW(aiW,'follow');aiAct()}else if(k==='d'){if(aiW.bs)sendW(aiW,aiW.bs);else{aiB=1;toast(aiW.n+' no tiene base de origen: elige a cuál llevarla')}aiAct()}else if(k==='b'){aiB=!aiB;aiAct()}
  else if(k==='u'){const pr=PRC[aiW.ti];if(ownN()>=4)return toast('Flota llena (4/4)');if(ship.cred<pr)return toast('Créditos insuficientes ('+pr+' cr)');ship.cred-=pr;setW(aiW,'follow');aiAct()}
  else if(k==='s'){const bs=baseList(aiW);if(bs[+b.dataset.i])sendW(aiW,bs[+b.dataset.i]);aiB=0;aiAct()}});
 addEventListener('keydown',e=>{if(aiW&&e.code==='Escape'){e.stopImmediatePropagation();wInfoClose()}},true);
 function aiRender(){const w=aiW;if(!w)return;if(!wing.includes(w)&&!svc.includes(w)&&!svr.includes(w)){wInfoClose();if(!w.svc)toast('Esa nave ya no está en tu flota');return}if(state!=='play'&&state!=='map'){wInfoClose();return}
- if(state==='play'&&!w.svc&&dist(w,ship)>1700){wInfoClose();toast('Nave aliada fuera de alcance: solo visible en el mapa');return}
+ if(state==='play'&&!w.svc&&!w.own&&dist(w,ship)>1700){wInfoClose();toast('Nave aliada fuera de alcance: solo visible en el mapa');return}
  const sp=Math.hypot(w.vx,w.vy),mv=!!w.jp||sp>25,sr=w.smax?clamp((w.shd||0)/w.smax,0,1):0,hr=clamp(w.hp/w.max,0,1),T2=w.jp?w.jp.d:w.st==='base'&&w.hb?w.hb:null,eta=w.jp?Math.max(0,w.jp.te-w.jp.t):w.svc?(w.back?dist(w,w.hb)/w.spd:w.arr?0:dist(w,ship)/w.spd):w.st==='rescue'?dist(w,ship)/w.spd:T2?Math.max(0,dist(w,T2)-(T2.r||0)-360)/w.spd:0;
  $('aiN').textContent=w.n;$('aiS').textContent=w.jp?'SALTO HIPERESPACIAL':mv?'EN MOVIMIENTO':'PARADA';$('aiS').style.color=mv?'#ffd166':'#7dff9b';
  $('aiHt').textContent=Math.round(w.hp)+' / '+w.max;$('aiHb').style.width=hr*100+'%';$('aiSt').textContent=w.smax?Math.round(w.shd||0)+' / '+w.smax:'—';$('aiSb').style.width=sr*100+'%';

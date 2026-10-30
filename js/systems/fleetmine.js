@@ -2,7 +2,7 @@
    systems/fleetmine.js — Misiones de minería de la flota.
    ----------------------------------------------------------------------------
    · Una nave de tu flota enviada a minar SALE de verdad desde donde esté (a tu lado o en otra base) y se
-     mueve con la misma física y los mismos saltos que el resto de la flota (nada de teletransportes):
+     mueve con la misma física y la misma velocidad que cuando la llamas o la mandas a una base (sin saltos):
         ir al campo → minar (rayo de minería sobre una roca) → ir a la base → descargar → repetir.
    · Modos de carga: vender el crudo, fundirlo en Estación Umbral y vender los lingotes, o guardarlo en el
      almacén común. El dinero se ingresa a tu cuenta al descargar.
@@ -35,11 +35,14 @@ function fmStart(w,k,mode){if(!w||!w.own||w.hp<=0||w.fm&&w.st==='mine')return;
   w.st='mine';w.esc=null;w.rescue=null;w.fm={k,mode,ph:'go',cargo:0,cg:0,cap:fmCap(w),earn:0,cyc:0,t:0,F:fs[0],rock:null,hov:null,dst:null,stop:0};
   toast(w.n+' sale a minar '+MIN[k][0].toLowerCase()+' en '+fs[0].n);qEv('wgf')}
 function fmStop(w){const m=w.fm;if(!m)return;m.stop=1;if(m.ph==='go'||m.ph==='mine'){if(m.cargo>0){m.ph='back';m.dst=null}else{m.ph='home';m.dst=null}}toast(w.n+' termina la ruta')}
-/* ----- movimiento: vuela y salta como el resto de la flota ----- */
-function fmGo(w,tx,ty,dt,stop){const dx=tx-w.x,dy=ty-w.y,d=Math.hypot(dx,dy);
-  if(d>9000&&!w.jp){wJump(w,{x:tx-dx/d*stop,y:ty-dy/d*stop},.4,1.1);return false}
-  if(d<=stop+10){w.vx*=1-3*dt;w.vy*=1-3*dt;w.x+=w.vx*dt;w.y+=w.vy*dt;return Math.hypot(w.vx,w.vy)<45}
-  const v=Math.min(w.spd,(d-stop)*1.2+30);wSteer(w,dx/d*v-w.vx*.35,dy/d*v-w.vy*.35,dt,2.6,w.spd);w.x+=w.vx*dt;w.y+=w.vy*dt;return false}
+/* ----- movimiento: el mismo sistema que cuando llamas a una nave o la mandas a una base ----- */
+/* vuela a su propia velocidad (sin saltos), con el mismo giro, aceleración, frenado y esquiva de obstáculos;
+   al ser movimiento normal, el resto de jugadores la ven viajar (mpWg ya transmite posición y rumbo) */
+function fmGo(w,tx,ty,dt,stop){const dx=tx-w.x,dy=ty-w.y,d=Math.hypot(dx,dy),cp=w.spd*1.1;
+  if(d<=stop+60){const kk=Math.min(1,3*dt);let gx=dx*2.2,gy=dy*2.2;const gl=Math.hypot(gx,gy);if(gl>cp){gx*=cp/gl;gy*=cp/gl}w.vx+=(gx-w.vx)*kk;w.vy+=(gy-w.vy)*kk}   // llegada suave
+  else{const sp=Math.min(w.spd,(d-stop)*1.4),vx=dx/d*sp,vy=dy/d*sp;wSteer(w,vx-w.vx,vy-w.vy,dt,2.4,cp)}
+  const o=avoid(w,14,null);w.vx+=o[0]*700*dt;w.vy+=o[1]*700*dt;w.x+=w.vx*dt;w.y+=w.vy*dt;
+  return d<=stop+25&&Math.hypot(w.vx,w.vy)<40}
 function fmPickBase(w,m){if(m.mode==='cook'){const u=fmUmbral();if(u&&fmSafe(u))return u}let b=null,bd=1e18;for(const q of BASES){if(!fmSafe(q))continue;const d=dist(w,q);if(d<bd){bd=d;b=q}}return b||BASES[0]}
 function fmNewRock(w,m){const near=m.rock;let q=null;for(let i=0;i<12;i++){const c=fmSpot(m.F,w);if(!near||dist(c,near)<1100){q=c;break}}q=q||fmSpot(m.F,w);m.rock=q;
   const a=Math.atan2(w.y-q.y,w.x-q.x);m.hov={x:q.x+Math.cos(a)*150,y:q.y+Math.sin(a)*150};m.rt=0}
@@ -80,3 +83,19 @@ function fmBeam(x0,y0,a,bx,by,k,seed){const col=(MIN[k]&&MIN[k][1])||'#ffb86b',p
   g.save();g.fillStyle=col;for(let i=0;i<3;i++){const r=14+((time*40+i*17+seed)%22),aa=((time*3+i*2.1+seed)%TAU);g.globalAlpha=.7*(1-(r-14)/22);g.fillRect(bx+Math.cos(aa)*r-1,by+Math.sin(aa)*r-1,2,2)}g.restore()}
 function fmDraw(){for(const w of wing)if(w.mb&&w.hp>0&&vis(w.x,w.y,400))fmBeam(w.x,w.y,w.a,w.mb[0],w.mb[1],w.fm?w.fm.k:'fe',w.x*.01);
   if(typeof MPR!=='undefined')for(const k in MPR){const r=MPR[k];if(r.wgs&&performance.now()-r.t<5000)for(const o of r.wgs)if(o.mb&&vis(o.x,o.y,400))fmBeam(o.x,o.y,o.a,o.mb[0],o.mb[1],o.mk||'fe',o.x*.01)}}
+
+/* ----- menú de información de la nave (el que se abre desde la F o con clic derecho): desplegable «Enviar a minar» ----- */
+const FMI={w:null,m:0,k:'fe',mode:'sell'};
+function fmInfoUI(w){if(!w.own||w.st==='guard'||w.svc)return'';if(FMI.w!==w){FMI.w=w;FMI.m=0}
+  const m=w.fm&&w.st==='mine'?w.fm:null,B='position:static;width:100%;margin-top:8px',sb='position:static;width:auto;padding:6px 8px;font-size:11px;margin:0';
+  let h='<button class="sq'+(FMI.m?' on':'')+'" data-k="m" style="'+B+'">Enviar a minar… '+(FMI.m?'▲':'▼')+'</button>';if(!FMI.m)return h;
+  if(m)return h+'<div class=card2 style="margin:4px 0"><b style="color:#ffb86b">En misión</b><div style="margin:4px 0">'+fmLbl(w)+'</div><div class=kv><span style="opacity:.7">Mineral</span><b>'+MIN[m.k][0]+'</b></div><div class=kv><span style="opacity:.7">Carga</span><b>'+m.cargo+' / '+m.cap+'</b></div><div class=kv><span style="opacity:.7">Ganado</span><b>'+m.earn+' cr</b></div>'+(m.stop?'<div style="opacity:.7;margin-top:6px">Terminando la ruta…</div>':'<button class="sq" data-k="ms" style="'+B+'">Terminar ruta</button>')+'</div>';
+  const lv=fmLv(),fs=fmFieldsFor(FMI.k,w),fld=fs[0],spu=fmSpu(FMI.k,fld);
+  h+='<div class=card2 style="margin:4px 0"><div style="opacity:.7;margin-bottom:4px">Mineral</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+Object.keys(MIN).map(k=>{const ok=(MIN[k][3]||0)<=lv;return '<button class="sq'+(k===FMI.k?' on':'')+'" data-k="mm" data-m="'+k+'"'+(ok?'':' disabled')+' style="'+sb+'">'+MIN[k][0]+(ok?'':' 🔒')+'</button>'}).join('')+'</div>'
+   +'<div style="opacity:.7;margin:8px 0 4px">Qué hacer con la carga</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+Object.keys(FMM).map(k=>'<button class="sq'+(k===FMI.mode?' on':'')+'" data-k="md" data-m="'+k+'" style="'+sb+'">'+FMM[k][0]+'</button>').join('')+'</div><div style="opacity:.7;font-size:11px;margin-top:4px">'+FMM[FMI.mode][1]+'</div>'
+   +(fld?'<div class=kv style="margin-top:8px"><span style="opacity:.7">Campo</span><b>'+fld.n+'</b></div><div class=kv><span style="opacity:.7">Viaje de ida</span><b>'+Math.ceil(fmFD(fld,w)/w.spd/60*10)/10+' min</b></div><div class=kv><span style="opacity:.7">Ritmo</span><b>'+(60/spu).toFixed(1)+' uds/min</b></div>':'<div style="color:#ff6b6b;margin-top:8px">No hay un campo accesible para este mineral'+(fs.blocked?': queda fuera del aro y necesita refuerzo anti-implosión':'')+'.</div>')
+   +'<button class="sq" data-k="mg" style="'+B+';color:#ffb86b"'+(fld&&(MIN[FMI.k][3]||0)<=lv?'':' disabled')+'>Enviar a minar '+MIN[FMI.k][0].toLowerCase()+'</button></div>';
+  return h}
+function fmInfoClick(k,b){const w=aiW;if(!w)return false;
+  if(k==='m'){FMI.m=FMI.m?0:1;return true}if(k==='mm'){FMI.k=b.dataset.m;return true}if(k==='md'){FMI.mode=b.dataset.m;return true}
+  if(k==='mg'){fmStart(w,FMI.k,FMI.mode);FMI.m=0;if(wOpen)wRender();return true}if(k==='ms'){fmStop(w);return true}return false}
