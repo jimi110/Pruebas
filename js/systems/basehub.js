@@ -138,6 +138,16 @@ function hubBar(){if(hubEl)return hubEl;hubEl=document.createElement('div');hubE
 .mkl{max-height:calc(100vh - 260px);overflow:auto;padding-right:4px}@media(max-width:720px){.mkl{max-height:300px}}
 .mkh{margin:10px 0 4px;color:#7fa8c8;font-size:11px;letter-spacing:.18em}.mkh:first-child{margin-top:0}
 .mkrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin:3px 0;padding:7px 8px;background:rgba(10,20,34,.8);border:1px solid #1d3550;color:#cfe8ff;font:inherit;cursor:pointer}.mkrow.on{border-color:#ffd166;background:#16263a}
+.flw{display:grid;grid-template-columns:minmax(230px,34%) 1fr;gap:12px;margin-top:8px;align-items:start}@media(max-width:760px){.flw{grid-template-columns:1fr}}
+.fll{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 230px);overflow:auto}@media(max-width:760px){.fll{max-height:none;flex-direction:row;overflow-x:auto}.flc{min-width:210px}}
+.flc{text-align:left;padding:8px 10px;background:rgba(10,20,34,.85);border:1px solid #1d3550;border-left:4px solid var(--c,#4fd1ff);color:#cfe8ff;font:inherit;cursor:pointer}.flc.on{background:#16263a;border-color:var(--c,#ffb86b)}
+.flh{display:flex;align-items:center;gap:8px}.flh i{width:10px;height:10px;border-radius:50%;flex:none}.flh b{flex:1;min-width:0}
+.chp{border:1px solid;padding:1px 8px;font-size:10px;letter-spacing:.08em;white-space:nowrap}
+.fld{display:flex;flex-direction:column;gap:10px}.fld .card2{margin:0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}.tile{background:rgba(5,12,22,.7);border:1px solid #16293f;padding:6px 8px}.tile small{display:block;font-size:10px;color:#7fa8c8;letter-spacing:.1em;text-transform:uppercase}.tile b{font-size:13px}
+.acts{display:flex;flex-wrap:wrap;gap:6px}.acts .sq{position:static;width:auto!important;margin:0!important;padding:7px 11px;font-size:12px}
+.stp{margin:14px 0 6px;color:#ffb86b;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.stp b{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border:1px solid #ffb86b;border-radius:50%;margin-right:6px}
+.chb{background:rgba(10,20,34,.9);border:1px solid #2a4560;color:#cfe8ff;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}.chb i{width:9px;height:9px;border-radius:50%}.chb.on{border-color:#ffb86b;background:#2a2012;color:#fff}.chb[disabled]{opacity:.45;cursor:default}
 .whr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #12243a;font-size:12px}.whr:first-child{border-top:0}.whr i{width:10px;height:10px;border-radius:50%;flex:none}.whb{margin-left:auto;display:flex;gap:6px}.whb .sq{position:static;padding:5px 9px;font-size:11px;margin:0}.fls{margin:8px 0}.mkrow i{width:10px;height:10px;border-radius:50%;flex:none}.mkrow small{font-size:10px;opacity:.9}`;document.head.appendChild(st);
   hubEl.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.dataset.hub)hubGo(b.dataset.hub)});return hubEl}
 function hubSync(){const on=!!ship.docked&&(state==='hangar'||state==='ship');const el=hubBar();if(!on){if(el.style.display!=='none')el.style.display='none';hubSg='';return}
@@ -179,19 +189,43 @@ function hubWh(){mkInit();const d=ship.docked,chip=(t,v)=>`<span class=cc>${t}<b
 <div class=card2><b>MINERAL CRUDO</b><div style="margin-top:6px">${raw||'<div class=dim>No tienes mineral crudo.</div>'}</div></div>
 <div class=card2><b>LINGOTES (cocinados)</b><div style="margin-top:6px">${ings||'<div class=dim>Aún no tienes lingotes. Se funden en Estación Umbral (pestaña ECONOMÍA).</div>'}</div></div>
 <div class=card2><b>CHATARRA</b><div class=whr style="margin-top:6px"><i style="background:#cfe8ff"></i><b style="flex:1">Chatarra</b><span class=dim>Nave ${sc}</span><span>Almacén <b>${ws}</b></span><span class=whb>${sc?sq('Guardar 1','data-mk="wh:dep:sc:1"')+sq('todo','data-mk="wh:dep:sc:all"'):''}${ws?sq('Retirar 1','data-mk="wh:ret:sc:1"')+sq('todo','data-mk="wh:ret:sc:all"'):''}</span></div><div class=dim style="margin-top:4px">La chatarra de tu nave es la que se usa para reparar.</div></div>`}
-/* ================= MEJORAS (comprar) — se equipan en NAVE ================= */
-const upName=k=>(typeof UPN!=='undefined'&&UPN[k])||NM[k]||k;
-function upBuy(k){const d=ship.docked;if(!d)return;if(!d.small)return toast('Mejoras solo en estaciones: Cobre, Vega o Nova');T.lv=T.lv||{};T.pk=T.pk||{};const lt=(T.lv[k]||0)+(T.pk[k]||0);if(lt>=3)return;const c=UP[k].c*(lt+1);
-  if(ship.cred<c)return toast('Créditos insuficientes: faltan '+(c-ship.cred));ship.cred-=c;T.pk[k]=(T.pk[k]||0)+1;qEv('upg');toast('Comprada: '+upName(k)+' nivel '+(lt+1)+' → equípala en NAVE')}
-function upAct(a,k){try{if(a==='buy')upBuy(k);else if(typeof impAct==='function'&&(a==='hull'||a==='kit'))impAct(a);saveGame()}catch(e){console.warn('[mejoras]',e)}}
-function hubUpg(){const d=ship.docked,stn=!!d.small;T.lv=T.lv||{};T.pk=T.pk||{};let h=`<div class=sh1><b style="color:#7dff9b;letter-spacing:.12em">MEJORAS · ${T.n.toUpperCase()}</b>${sq('Cerrar [N]','data-x=1')}</div>
-<div class=res><span class=cc>◈ <b>${Math.floor(ship.cred)} cr</b></span></div>
-<div class=card2 style="margin-top:8px"><div class=dim>Aquí solo se COMPRAN las mejoras de la nave que llevas puesta. Después hay que EQUIPARLAS en NAVE → el componente → MEJORAR. ${stn?'':'En esta base no se venden: están en Estación Cobre, Vega y Nova.'}</div></div>`;
-  for(const k of Object.keys(UP)){const l=T.lv[k]||0,pk=T.pk[k]||0,lt=l+pk,full=lt>=3,c=full?0:UP[k].c*(lt+1),us=UP[k].s(),ok=!full&&ship.cred>=c;
-    h+=`<div class=card2><div style="display:flex;align-items:center;gap:8px"><b>${upName(k)}</b><span class=badge style="margin-left:auto">nivel ${l} equipado${pk?' · '+pk+' en inventario':''} / 3</span></div>${kv(us[0],us[1]+(full?'':' → '+us[2]))}`+
-      (pk?`<div style="color:#7dff9b;margin-top:4px">Tienes ${pk} sin equipar: ve a NAVE → ${NM[k]||upName(k)}.</div>`:'')+
-      (full?'<div class=dim style="margin-top:4px">Nivel máximo (equipado + inventario).</div>':kv('Coste',c+' cr',ok?'':'#ff6b6b')+(stn?sq('Comprar mejora (nivel '+(lt+1)+')','data-mk="up:buy:'+k+'"'+(ok?'':' disabled'),'width:100%;margin-top:6px'):''))+`</div>`}
-  if(typeof impStore==='function')h+=impStore();
+/* ================= MEJORAS ESPECIALES (se compran aquí y se equipan en las naves compatibles) =================
+   Las mejoras normales por niveles se siguen comprando y aplicando desde NAVE. Aquí solo hay dos especiales:
+   · Rayo láser (arma): se compra una vez (vale para todas tus naves) en Estación Vega y se equipa en cada nave
+     compatible. El Explorador no es compatible.
+   · Refuerzo anti-implosión (casco): se compra por nave en Base Omega (30 lingotes + 3000 cr) y se equipa.
+   · Kits de refuerzo de flota: se compran en Base Omega y se equipan en la pestaña FLOTA.
+   Para cambiar qué naves son compatibles, edita spuLaserOk / spuImpOk. */
+const spuLaserOk=t=>t.sh!=='e',spuImpOk=t=>true;
+const spuShips=()=>TYPES.map((t,i)=>({t,i})).filter(o=>o.t.own);
+function upAct(a,k){try{const d=ship.docked;if(!d)return;const t=TYPES[+k];
+  if(a==='wb'){if(d.n!=='Estación Vega')return toast('El láser se vende en Estación Vega');if(WOWN.laser)return;if(ship.cred<WP.laser.pr)return toast('Créditos insuficientes: '+WP.laser.pr+' cr');ship.cred-=WP.laser.pr;WOWN.laser=1;toast('Rayo láser comprado: equípalo en las naves compatibles')}
+  else if(a==='we'){if(!t||!WOWN.laser)return;if(!spuLaserOk(t))return toast(t.n+' no es compatible con el láser');t.wp='laser';toast('Láser equipado en '+t.n)}
+  else if(a==='wu'){if(t)t.wp='cannon'}
+  else if(a==='ib'){if(!t)return;if(d.n!==OM.n)return toast('El refuerzo se vende en Base Omega');if(!spuImpOk(t))return toast(t.n+' no es compatible con el refuerzo');if(t.imp||t.imq)return;
+    if(ingTot()<IMPH.l)return toast('Faltan lingotes: necesitas '+IMPH.l);if(ship.cred<IMPH.c)return toast('Créditos insuficientes: '+IMPH.c+' cr');ingSpend(IMPH.l);ship.cred-=IMPH.c;t.imq=1;toast('Refuerzo comprado para '+t.n+': equípalo')}
+  else if(a==='ie'){if(!t||!t.imq||t.imp)return;t.imq=0;t.imp=1;t.hull+=100;if(t===T)ship.hull=Math.min(T.hull,ship.hull+100);QX.hu=(QX.hu|0)+1;toast('✔ '+t.n+' reforzada: +100 de resistencia y a salvo de la implosión')}
+  else if(a==='kit'&&typeof impAct==='function')impAct('kit');
+  saveGame()}catch(e){console.warn('[mejoras]',e)}}
+function hubUpg(){const d=ship.docked,isV=d.n==='Estación Vega',isO=d.n===OM.n,ing=ingTot(),L=spuShips(),chip=(t,v)=>`<span class=cc>${t}<b>${v}</b></span>`;
+  let h=`<div class=sh1><b style="color:#7dff9b;letter-spacing:.12em">MEJORAS ESPECIALES</b>${sq('Cerrar [N]','data-x=1')}</div>
+<div class=res>${chip('◈ ',Math.floor(ship.cred)+' cr')}${chip('Lingotes ',ing)}</div>
+<div class=card2 style="margin-top:8px"><div class=dim>Aquí se compran las mejoras especiales y se equipan en las naves compatibles. Las mejoras normales por niveles (casco, escudos, motores…) se compran y aplican desde NAVE → el componente → MEJORAR.</div></div>`;
+  /* láser */
+  const okL=ship.cred>=WP.laser.pr;
+  h+=`<div class=card2 style="border-color:#ff9a4f"><b style="color:#ff9a4f">${WP.laser.n.toUpperCase()}</b><div class=dim style="margin:6px 0">${WP.laser.d} Se compra una vez y sirve para todas tus naves compatibles.</div>`;
+  if(WOWN.laser)h+='<div style="color:#7dff9b">✔ Comprado</div>';
+  else h+=kv('Precio',WP.laser.pr+' cr',okL?'':'#ff6b6b')+(isV?sq('Comprar rayo láser','data-mk="up:wb:0"'+(okL?'':' disabled'),'width:100%;margin-top:8px'):'<div class=dim style="margin-top:6px">Se vende en Estación Vega.</div>');
+  h+=`<div style="border-top:1px solid #1d3550;margin:10px 0 4px"></div>`+L.map(o=>{const t=o.t,eq=t.wp==='laser',ok=spuLaserOk(t);
+    return `<div class=whr><i style="background:${t.col}"></i><b style="flex:1;min-width:90px">${t.n}</b>`+(!ok?'<span style="color:#ff9a4f">No compatible</span>':eq?`<span style="color:#7dff9b">Láser equipado</span><span class=whb>${sq('Volver a pulsos','data-mk="up:wu:'+o.i+'"')}</span>`:WOWN.laser?`<span class=dim>Cañón de pulsos</span><span class=whb>${sq('Equipar láser','data-mk="up:we:'+o.i+'"')}</span>`:'<span class=dim>Cañón de pulsos</span>')+`</div>`}).join('')+`</div>`;
+  /* refuerzo anti-implosión */
+  const okH=ing>=IMPH.l&&ship.cred>=IMPH.c;
+  h+=`<div class=card2 style="border-color:#7de3ff"><b style="color:#7de3ff">REFUERZO ANTI-IMPLOSIÓN</b><div class=dim style="margin:6px 0">Fuera del aro de Alfa la presión es altísima. Este refuerzo suma +100 de resistencia al casco y permite salir. Se compra por nave en Base Omega.</div>${kv('Coste por nave',IMPH.l+' lingotes + '+IMPH.c+' cr',okH?'':'#ff6b6b')}`+(isO?'':'<div class=dim style="margin:4px 0">Se vende en Base Omega.</div>')+
+    `<div style="border-top:1px solid #1d3550;margin:10px 0 4px"></div>`+L.map(o=>{const t=o.t,ok=spuImpOk(t);
+    return `<div class=whr><i style="background:${t.col}"></i><b style="flex:1;min-width:90px">${t.n}</b>`+(!ok?'<span style="color:#ff9a4f">No compatible</span>':t.imp?'<span style="color:#7dff9b">✔ Equipado</span>':t.imq?`<span style="color:#7dff9b">Comprado</span><span class=whb>${sq('Equipar','data-mk="up:ie:'+o.i+'"')}</span>`:`<span class=whb>${isO?sq('Comprar','data-mk="up:ib:'+o.i+'"'+(okH?'':' disabled')):''}</span>`)+`</div>`}).join('')+`</div>`;
+  /* kits de flota */
+  const okK=ing>=IMPF.l&&ship.cred>=IMPF.c;
+  h+=`<div class=card2 style="border-color:#7de3ff"><b style="color:#7de3ff">REFUERZO DE FLOTA</b><div class=dim style="margin:6px 0">Kit para una nave de tu flota (+100 de resistencia y a salvo de la implosión). Se equipa en la pestaña FLOTA.</div>${kv('Kits en inventario',QX.fli|0)}${kv('Coste por kit',IMPF.l+' lingotes + '+IMPF.c+' cr',okK?'':'#ff6b6b')}`+(isO?sq('Comprar kit de flota','data-mk="up:kit:0"'+(okK?'':' disabled'),'width:100%;margin-top:8px'):'<div class=dim style="margin-top:6px">Se vende en Base Omega.</div>')+'</div>';
   return h}
 /* ================= FLOTA ================= */
 const flOwn=()=>wing.filter(w=>w.own&&w.hp>0),flId=w=>w.fid||(w.fid=++FLID);
@@ -203,24 +237,29 @@ function flAct(p){const w=wing.find(q=>q.fid===+p[2]);
   else if(p[1]==='base'){const b=BASES[+p[3]];if(b)sendW(w,b)}
   else if(p[1]==='kit'){if((QX.fli|0)<1)return toast('No tienes refuerzos de flota: cómpralos en MEJORAS (Base Omega)');if(w.imp)return;QX.fli--;w.imp=1;w.max+=100;w.hp=Math.min(w.max,w.hp+100);toast('✔ '+w.n+' reforzada: +100 de resistencia y a salvo de la implosión')}
   try{saveGame()}catch(e){}}
-function hubFleet(){const L=flOwn(),d=ship.docked;let h=`<div class=sh1><b style="color:#ffb86b;letter-spacing:.12em">FLOTA · ${L.length}/4 NAVES</b>${sq('Cerrar [N]','data-x=1')}</div>`;
-  if(!L.length)return h+`<div class=card2 style="margin-top:8px">Aún no tienes naves en tu flota. Repara naves averiadas con el Técnico o recluta guardias; aparecerán aquí.</div>`;
+function hubFleet(){const L=flOwn(),d=ship.docked;
+  const mis=L.filter(w=>w.fm&&w.st==='mine').length,near=L.filter(w=>!(w.fm&&w.st==='mine')&&w.st==='follow').length;
+  let h=`<div class=sh1><b style="color:#ffb86b;letter-spacing:.12em">FLOTA · ${L.length}/4 NAVES</b>${sq('Cerrar [N]','data-x=1')}</div>`;
+  if(!L.length)return h+`<div class=card2 style="margin-top:8px">Aún no tienes naves en tu flota. Repara naves averiadas con el Técnico o recluta guardias: aparecerán aquí y podrás mandarlas a minar.</div>`;
   if(!L.some(w=>flId(w)===flSel))flSel=flId(L[0]);
-  h+=`<div class=card2 style="margin-top:8px"><div class=dim>Aquí diriges tu flota. Una nave enviada a minar sale de verdad desde donde esté (contigo o en otra base), vuela, mina, lleva la carga a la base y te ingresa el dinero. Si la atacan y su casco baja del 40% regresa a la base; puede perderse.</div></div>
-<div class=fls>${L.map(w=>{const t=TYPES[w.ti],f=flId(w),m=w.fm&&w.st==='mine';return `<button class="mkrow${f===flSel?' on':''}" data-mk="fl:sel:${f}"><i style="background:${t.col}"></i><span style="flex:1;min-width:0"><b>${w.n}</b><small style="display:block">${t.n} · ${m?fmLbl(w):wLbl(w)}</small></span><span style="min-width:48px;text-align:right"><b>${Math.round(w.hp/w.max*100)}%</b></span></button>`}).join('')}</div>`;
-  const w=L.find(q=>flId(q)===flSel),t=TYPES[w.ti],f=flId(w),m=w.fm;
-  h+=`<div class=card2><div style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;background:${t.col};display:inline-block"></i><b style="font-size:16px">${w.n}</b><span class=badge style="margin-left:auto">${t.n}</span></div>
-<div class=bb style="margin:8px 0"><b style="width:${Math.round(w.hp/w.max*100)}%;background:#7dff9b"></b></div>${kv('Estado',w.fm&&w.st==='mine'?fmLbl(w):wLbl(w))}${kv('Posición',whereIs(w)+' · '+km(dist(w,ship))+' de ti')}${kv('Bodega',(t.cargo||0)+' uds')}${kv('Refuerzo anti-implosión',w.imp?'✔ instalado':'no instalado',w.imp?'#7dff9b':'#ffb347')}`;
-  if(m&&w.st==='mine')h+=`${kv('Mineral',MIN[m.k][0])}${kv('Modo',FMM[m.mode][0])}${kv('Carga',m.cargo+' / '+m.cap)}${kv('Ganado en esta ruta',m.earn+' cr','#ffd166')}${kv('Viajes completados',m.cyc)}${m.stop?'<div class=dim style="margin-top:6px">Terminando la ruta: descargará y se quedará en la base.</div>':sq('Terminar ruta (descarga y para)','data-mk="fl:stop:'+f+'"','width:100%;margin-top:8px')}`;
-  h+=`<div style="display:flex;gap:6px;margin-top:8px">${sq('Llamar a mi lado','data-mk="fl:call:'+f+'"','flex:1')}${!w.imp&&(QX.fli|0)>0?sq('Reforzar ('+QX.fli+' kits)','data-mk="fl:kit:'+f+'"','flex:1;color:#7de3ff'):''}</div>
-<div class=dim style="margin:8px 0 4px">Enviar a una base:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${BASES.map((b,i)=>b.n==='Base Beta'?'':sq(b.n.replace('Base ','').replace('Estación ',''),'data-mk="fl:base:'+f+':'+i+'"','flex:none;padding:6px 10px')).join('')}</div></div>`;
-  /* enviar a minar */
-  const lv=fmLv(),mins=Object.keys(MIN);
-  const need=k=>MIN[k][3]||0,okK=k=>need(k)<=lv,fs=fmFieldsFor(flMin,w),fld=fs[0];
-  h+=`<div class=card2 style="border-color:#ffb86b"><b style="color:#ffb86b">MISIÓN DE MINERÍA</b><div class=dim style="margin:6px 0 4px">Mineral a extraer:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${mins.map(k=>sq(MIN[k][0]+(okK(k)?'':' 🔒'),'data-mk="fl:min:'+f+':'+k+'"'+(okK(k)?'':' disabled'),'flex:none;padding:6px 10px;'+(k===flMin?'border-color:'+MIN[k][1]+';color:#fff':''))).join('')}</div>
-<div class=dim style="margin:8px 0 4px">Qué hacer con la carga:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${Object.keys(FMM).map(k=>sq(FMM[k][0],'data-mk="fl:mode:'+f+':'+k+'"','flex:none;padding:6px 10px;'+(k===flMode?'border-color:#ffb86b;color:#fff':''))).join('')}</div><div class=dim style="margin-top:4px">${FMM[flMode][1]}</div>`;
-  const spu=fmSpu(flMin,fld),cap=t.cargo||30;
-  h+=(fld?kv('Campo elegido',fld.n+' · '+km(dist(w,fld))):'<div style="color:#ff6b6b;margin-top:6px">No hay campo accesible para este mineral'+(flMin&&fs.blocked?' (queda fuera del aro: necesita refuerzo anti-implosión)':'')+'.</div>')+kv('Ritmo estimado',fld?(60/spu).toFixed(1)+' uds/min':'—')+kv('Llenar bodega',fld?Math.ceil(cap*spu/60)+' min':'—')+kv('Precio actual',mkFmt(mkMid(flMin))+' cr/ud');
-  const act=!!w.fm&&w.st==='mine';
-  h+=sq(act?'Ya está en misión':'Enviar a minar '+MIN[flMin][0].toLowerCase(),'data-mk="fl:go:'+f+'"'+(act||!fld||!okK(flMin)?' disabled':''),'width:100%;margin-top:8px;color:#ffb86b')+`</div>`;
-  return h}
+  const stc=w=>{const m=w.fm&&w.st==='mine';return w.hp<w.max*.4?['Dañada','#ff6b6b']:m?['En misión','#ffb86b']:w.st==='follow'?['Contigo','#7dff9b']:w.st==='base'?['En base','#7dc8ff']:['Activa','#cfe8ff']};
+  h+=`<div class=res><span class=cc>En misión <b>${mis}</b></span><span class=cc>Contigo <b>${near}</b></span><span class=cc>Refuerzos <b>${QX.fli|0}</b></span><span class=cc>◈ <b>${Math.floor(ship.cred)} cr</b></span></div><div class=flw><div class=fll>`;
+  h+=L.map(w=>{const t=TYPES[w.ti],f=flId(w),m=w.fm&&w.st==='mine',c=stc(w);
+    return `<button class="flc${f===flSel?' on':''}" data-mk="fl:sel:${f}" style="--c:${t.col}"><div class=flh><i style="background:${t.col}"></i><b>${w.n}</b><span class=chp style="color:${c[1]};border-color:${c[1]}">${c[0]}</span></div><div class=dim>${t.n} · ${m?fmLbl(w):wLbl(w)}</div><div class=bb><b style="width:${Math.round(w.hp/w.max*100)}%;background:#7dff9b"></b></div>${m?`<div class=bb style="margin-top:3px"><b style="width:${Math.round(w.fm.cargo/w.fm.cap*100)}%;background:${MIN[w.fm.k][1]}"></b></div>`:''}</button>`}).join('')+`</div><div class=fld>`;
+  const w=L.find(q=>flId(q)===flSel),t=TYPES[w.ti],f=flId(w),m=w.fm&&w.st==='mine'?w.fm:null,c=stc(w),tile=(a,b,c2)=>`<div class=tile><small>${a}</small><b${c2?' style="color:'+c2+'"':''}>${b}</b></div>`;
+  /* --- ficha de la nave --- */
+  h+=`<div class=card2 style="border-color:${t.col}"><div class=flh><i style="background:${t.col}"></i><b style="font-size:16px">${w.n}</b><span class=chp style="color:${c[1]};border-color:${c[1]};margin-left:auto">${c[0]}</span></div><div class=dim style="margin:2px 0 8px">${t.n} · ${m?fmLbl(w):wLbl(w)}</div>
+<div class=tiles>${tile('Casco',Math.round(w.hp)+' / '+Math.round(w.max),w.hp<w.max*.4?'#ff6b6b':'')}${tile('Bodega',(t.cargo||0)+' uds')}${tile('Posición',whereIs(w))}${tile('Distancia',km(dist(w,ship)))}${tile('Anti-implosión',w.imp?'✔ instalado':'no instalado',w.imp?'#7dff9b':'#ffb347')}${tile('Motor',Math.round(w.spd)+' u/s')}</div>
+<div class=dim style="margin:10px 0 4px">ÓRDENES</div><div class=acts>${sq('Llamar a mi lado','data-mk="fl:call:'+f+'"')}${!w.imp&&(QX.fli|0)>0?sq('Reforzar ('+QX.fli+' kits)','data-mk="fl:kit:'+f+'"','color:#7de3ff'):''}</div>
+<div class=dim style="margin:10px 0 4px">ENVIAR A UNA BASE</div><div class=acts>${BASES.map((b,i)=>b.n==='Base Beta'?'':sq(b.n.replace('Base ','').replace('Estación ',''),'data-mk="fl:base:'+f+':'+i+'"')).join('')}</div></div>`;
+  /* --- misión de minería --- */
+  if(m){const pc=Math.round(m.cargo/m.cap*100);
+    h+=`<div class=card2 style="border-color:#ffb86b"><b style="color:#ffb86b">MISIÓN EN CURSO</b><div style="margin:8px 0 4px"><span style="color:${MIN[m.k][1]}">●</span> ${MIN[m.k][0]} · ${FMM[m.mode][0]}</div><div class=bb><b style="width:${pc}%;background:${MIN[m.k][1]}"></b></div><div class=dim style="margin:3px 0 8px">Carga ${m.cargo} / ${m.cap}</div>
+<div class=tiles>${tile('Ganado en la ruta',m.earn+' cr','#ffd166')}${tile('Viajes completados',m.cyc)}</div>${m.stop?'<div class=dim style="margin-top:8px">Terminando la ruta: descargará y se quedará en la base.</div>':sq('Terminar ruta (descarga y para)','data-mk="fl:stop:'+f+'"','width:100%;margin-top:10px')}</div>`;return h+`</div></div>`}
+  const lv=fmLv(),mins=Object.keys(MIN),need=k=>MIN[k][3]||0,okK=k=>need(k)<=lv,fs=fmFieldsFor(flMin,w),fld=fs[0],spu=fmSpu(flMin,fld),cap=t.cargo||30;
+  h+=`<div class=card2 style="border-color:#ffb86b"><b style="color:#ffb86b">MISIÓN DE MINERÍA</b><div class=dim style="margin-top:2px">Sale de donde esté, mina, lleva la carga a la base y te ingresa el dinero. Si la atacan y baja del 40%, vuelve a la base.</div>
+<div class=stp><b>1</b> Mineral</div><div class=acts>${mins.map(k=>`<button class="chb${k===flMin?' on':''}"${okK(k)?'':' disabled'} data-mk="fl:min:${f}:${k}"><i style="background:${MIN[k][1]}"></i>${MIN[k][0]}${okK(k)?'':' 🔒'}</button>`).join('')}</div>
+<div class=stp><b>2</b> Qué hacer con la carga</div><div class=acts>${Object.keys(FMM).map(k=>`<button class="chb${k===flMode?' on':''}" data-mk="fl:mode:${f}:${k}">${FMM[k][0]}</button>`).join('')}</div><div class=dim style="margin-top:4px">${FMM[flMode][1]}</div>
+<div class=stp><b>3</b> Resumen</div>`+(fld?`<div class=tiles>${tile('Campo',fld.n)}${tile('Distancia',km(fmFD(fld,w)))}${tile('Ritmo',(60/spu).toFixed(1)+' uds/min')}${tile('Llenar bodega',Math.ceil(cap*spu/60)+' min')}${tile('Precio actual',mkFmt(mkMid(flMin))+' cr/ud','#ffd166')}${tile('Ingreso por bodega','≈ '+Math.floor(cap*mkMid(flMin)*(flMode==='cook'?MKIN:1)*MKSP)+' cr','#7dff9b')}</div>`:`<div style="color:#ff6b6b;margin-top:6px">No hay un campo accesible para este mineral${fs.blocked?': queda fuera del aro y necesita refuerzo anti-implosión':''}.</div>`)+
+    sq('Enviar a minar '+MIN[flMin][0].toLowerCase(),'data-mk="fl:go:'+f+'"'+(!fld||!okK(flMin)?' disabled':''),'width:100%;margin-top:10px;color:#ffb86b')+`</div>`;
+  return h+`</div></div>`}

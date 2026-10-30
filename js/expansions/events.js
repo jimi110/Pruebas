@@ -47,7 +47,7 @@ const countNear=(x,y,r)=>ctx.players().filter(p=>Math.hypot(p.x-x,p.y-y)<r).leng
 /* ---------- intercepción del salto ---------- */
 function planStop(){
   const w=warp,A=w&&w.a,D=w&&w.dest;if(!A||!D||!Number.isFinite(D.x))return;
-  const S=E||G,fight=S&&(S.ph==='arr'||S.ph==='ask'||S.ph==='boss')?S:null,L=ctx.LIST().filter(r=>!r.m.builtin);
+  const S=E||G,fight=S&&(S.ph==='arr'||S.ph==='ask'||S.ph==='wave'||S.ph==='warn'||S.ph==='boss')?S:null,L=ctx.LIST().filter(r=>!r.m.builtin);
   let tx=null,ty=null,rg=null,msg='';
   if(fight){                                              // hay una lucha en curso: se lleva al piloto junto a ella
     const R=L.find(r=>r.id===fight.rg);
@@ -208,9 +208,14 @@ function towStep(dt){
     if(T.ph==='done')for(const c of T.cr){c.tw=null;c.fled=0;if(c.rgt){c.dep=.001;c.a=T.h+Math.PI}}}
   E.tw=E.tw.filter(T=>T.ph!=='done')}
 /* si alguien intenta huir del combate (oleadas, aviso, jefe o su retirada final), las naves de captura van a por él */
-function fleeCheck(){const F=E.fld;if(!F||!['wave','warn','boss'].includes(E.ph))return;
-  for(const P of roster()){if(E.tw.some(T=>T.id===P.id)||Math.hypot(P.x-F.x,P.y-F.y)<=F.r+100||time-(E.tl[P.id]||-99)<4)continue;
-    E.tl[P.id]=time;towStart(P,'back');sayTo(P,'⚠ Intentas huir: la guardia envía naves de captura')}}
+function fleeCheck(){const F=E.fld;if(!F||!['arr','ask','wave','warn','boss'].includes(E.ph))return;
+  const R=ctx.LIST().find(r=>r.id===E.rg);if(!R)return;E.in=E.in||{};
+  for(const P of roster()){
+    if(Math.hypot(P.x-F.x,P.y-F.y)<=F.r+100){E.in[P.id]=1;continue}                       // ya está en la zona de combate
+    if(E.tw.some(T=>T.id===P.id)||time-(E.tl[P.id]||-99)<4)continue;
+    if(!ctx.inside(R.m,P.x,P.y,0))continue;                                                // solo quien está dentro de la nebulosa (no a un amigo que está lejos)
+    E.tl[P.id]=time;towStart(P,'back');                                                    // intenta huir, o llega tarde por otra zona: la guardia lo lleva al combate
+    sayTo(P,E.in[P.id]?'⚠ Intentas huir: la guardia envía naves de captura':'⚠ Hay un combate en marcha en '+E.nm+': la guardia te lleva hasta él');E.in[P.id]=1}}
 /* invitado: la anfitriona manda la posición remolcada; cada cliente mueve su propia nave y su flota con la misma fórmula que el resto de NPC */
 function clearWingTow(){for(const w of wing)if(w.rgt)w.rgt=0}
 function guestApply(dt){
