@@ -27,3 +27,12 @@ código viene de un único script que se partió por secciones sin reordenarlo. 
 - **Balizas** (`poi` con `kind:"gear"|"laser"`): se recogen al acercarse; guardan el plano en `QX.bp` (por jugador).
 - **MEJORAS** de Base Zafiro: tren de aterrizaje (30 lapislázuli + 50 zafiro + 250 chatarra) y rayo francotirador, solo si tienes el plano.
 - **Misiones**: capítulo 5 (`c5.x`), secundarias `zs1..zs4` (solo tras llegar a la nebulosa) y encargos `zcl/zmt/zinv/zkl` (solo mientras estás en la nebulosa). Tras completar un encargo, el siguiente tarda 1–2 min (`QZ.jw`). Encargos y secundarias también funcionan en multijugador.
+
+## Zona N3 · Sistema Ilyria y planetas (región 05)
+
+- **Región** `region-05` (`region-expansion-05.json`, círculo de r=125 000 u, encima de la Nebulosa Zafiro, sin guardia: `"guard": false` en `regions.json`). Su planeta **Ilyria** (r=70 000 u) ocupa la mayor parte.
+- **Planetas**: se declaran en la clave `"planets"` del JSON de la región (`id, n, type, x, y, r, seed, desc, grav, temp, atm, day, comp`). La lógica vive en `js/systems/planets.js` (objeto global `PLN`).
+- **Tipos de planeta** (registro): `PLN.addType('id',{...})` — ya hay `terran`, `desert`, `ice` y `gas` (este último no es aterrizable). Cada tipo define su textura (`albedo`), atmósfera, nubes y suelo (`ground.pal/pick/deco`). Para un tipo nuevo basta copiar uno.
+- **Flujo**: acercarse (el zoom se aleja solo y se permite alejar hasta ×0,03) → clic derecho (o pulsación larga) = escaneo de 6 s → menú *Información / Orbitar / Atracar*. Atracar exige el tren de aterrizaje (`T.gear`) y no se puede en gigantes gaseosos. Las escoltas no bajan.
+- **Superficie** (estado `planet`): mapa de 160×160 casillas generado por semilla, animación de descenso/despegue, mapa del planeta bloqueado que se revela al explorar (se guarda en `pl` dentro del guardado). Controles: WASD/clic, `E` despegar, `M` mapa.
+- **Meteoritos**: evento visual raro cerca de planetas con atmósfera.

@@ -53,7 +53,7 @@ function worldMenu(px,py){const wx=w2x(px),wy=w2y(py);{const al=allyAt(wx,wy);if
   let cm=null,cd=60/zoom;for(const c of cmts){const d=Math.hypot(c.x-wx,c.y-wy)-c.r;if(d<cd){cd=d;cm=c}}
   if(cm){ctxMenu(px,py,[['Recoger '+CK[cm.k].m,()=>{if(T.md.includes('col')){mode.col=true;buildModes()}ship.cl=ship.mc=cm;ship.mt=null;ship.orbit=null;ship.dest=null}],['Fijar cometa',()=>{ship.cl=cm}]]);return 1}
   let as=null,ad=40/zoom;for(const a of asts){const d=Math.hypot(a.x-wx,a.y-wy)-a.r;if(d<ad){ad=d;as=a}}
-  if(as){ctxMenu(px,py,[['Minar',()=>{if(!canMine(as))return toast(needMsg(as));if(T.md.includes('col')){mode.col=true;buildModes()}ship.mt=as;ship.orbit=null;ship.dest=null}]]);return 1}return 0}
+  if(as){ctxMenu(px,py,[['Minar',()=>{if(!canMine(as))return toast(needMsg(as));if(T.md.includes('col')){mode.col=true;buildModes()}ship.mt=as;ship.orbit=null;ship.dest=null}]]);return 1}return PLN.click(px,py)?1:0}
 cv.addEventListener('pointerdown',()=>{$('ctx').classList.add('hide');$('zinfo').classList.add('hide')},true);
 document.addEventListener('contextmenu',e=>{e.preventDefault()},true);
 cv.addEventListener('contextmenu',e=>{e.preventDefault();if(state==='map'){{const al=mapAllyAt(e.clientX,e.clientY);if(al){allyMenu(e.clientX,e.clientY,al);return}}if(ship.dead>0)return;pickPoint(e.clientX,e.clientY);showCtx(e.clientX,e.clientY)}});
@@ -199,7 +199,7 @@ function confirmGo(){if(state!=='map'||!sel)return;if(ship.wreck){toast('Nave in
 const w2x=px=>cam.x+(px-W/2)/zoom,w2y=py=>cam.y+(py-H/2)/zoom;
 const ptr=new Map();let drag=null,pinch=0;
 const pd=()=>{const a=[...ptr.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1},pm=()=>{const a=[...ptr.values()];return{x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2}};
-function zoomAt(px,py,f){if((aiW&&state==='play')||(state!=='play'&&!mapV()))return;zRet=null;const z0=zoom,mp=mapV();zoom=clamp(zoom*f,mp?(RGH(r=>r.minZoom())||.004):.5,mp?1.5:3.6);
+function zoomAt(px,py,f){if((aiW&&state==='play')||(state!=='play'&&!mapV()))return;zRet=null;const z0=zoom,mp=mapV();zoom=clamp(zoom*f,mp?(RGH(r=>r.minZoom())||.004):PLN.minZoom(),mp?1.5:3.6);
   if(mp){const wx=mc.x+(px-W/2)/z0,wy=mc.y+(py-H/2)/z0;mc.x=wx-(px-W/2)/zoom;mc.y=wy-(py-H/2)/zoom;RGH(r=>r.onZoom(f))}}
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
 cv.addEventListener('pointerdown',e=>{if(state==='play'&&ship.wreck)wmAt=time;if(aiW&&state==='play')return;if(e.pointerType==='mouse'&&e.button===2){if(state==='play'&&!ship.dead){if(!quickAct(e.clientX,e.clientY)){fireOn=1;mouse={x:e.clientX,y:e.clientY}}}return}ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptr.size===2){pinch=pd();hold=0;drag=null}else if(ptr.size===1)drag={m:0};try{cv.setPointerCapture(e.pointerId)}catch(_){}},true);
@@ -248,7 +248,7 @@ function quickAct(px,py){const wx=w2x(px),wy=w2y(py);{const al=allyAt(wx,wy);if(
   let cm=null,cd=60/zoom;for(const c of cmts){const d=Math.hypot(c.x-wx,c.y-wy)-c.r;if(d<cd){cd=d;cm=c}}
   if(cm){if(T.md.includes('col')){mode.col=true;buildModes()}ship.cl=ship.mc=cm;ship.mt=null;ship.orbit=null;ship.dest=null;toast('Cometa fijado · recogiendo '+CK[cm.k].m);return 1}
   let as=null,ad=40/zoom;for(const a of asts){const d=Math.hypot(a.x-wx,a.y-wy)-a.r;if(d<ad){ad=d;as=a}}
-  if(as){if(!canMine(as)){toast(needMsg(as));return 1}if(T.md.includes('col')){mode.col=true;buildModes()}ship.mt=as;ship.orbit=null;ship.dest=null;toast('Minando '+(MIN[as.m]?MIN[as.m][0]:'roca'));return 1}return 0}
+  if(as){if(!canMine(as)){toast(needMsg(as));return 1}if(T.md.includes('col')){mode.col=true;buildModes()}ship.mt=as;ship.orbit=null;ship.dest=null;toast('Minando '+(MIN[as.m]?MIN[as.m][0]:'roca'));return 1}return PLN.click(px,py)?1:0}
 let omAn=0,omW=0;const omHostile=()=>!QX.card&&(dist(ship,OM)<OM.r+2600||time<omAn)&&!ship.docked;
 const MIN={fe:['Hierro','#b0b8c8',.7],cu:['Cobre','#e08a4f',1],cr:['Cristal','#7fe8ff',1.6],pt:['Platino','#ffd166',2.5],ti:['Titanio','#9fb7ff',3.6,1],ir:['Iridio','#ff7ad9',5.5,2],ne:['Neutronita','#7dffb0',9,3],lz:['Lapislázuli','#4a6bff',3.2,1],za:['Zafiro','#59c8ff',4.4,1]};
 const canMine=a=>((MIN[a.m]||[])[3]||0)<=((T.lv||{}).min||0),needMsg=a=>'Necesitas mejorar el Sistema de minería a nivel '+MIN[a.m][3]+' para minar '+MIN[a.m][0]+' (mejoras en estaciones)';

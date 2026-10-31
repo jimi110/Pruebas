@@ -53,7 +53,7 @@ function planStop(){
     const R=L.find(r=>r.id===fight.rg);
     if(R&&!ctx.inside(R.m,A.x,A.y,0)&&ctx.inside(R.m,D.x,D.y,-1500)){const a=Math.atan2(A.y-fight.fy,A.x-fight.fx);tx=fight.fx+Math.cos(a)*1500;ty=fight.fy+Math.sin(a)*1500;rg=R.id;msg='⚠ La guardia desvía tu salto hasta el combate que ya está en marcha'}}
   else if(!E&&!G)for(const R of L){
-    if(cleared.has(R.id)||ctx.inside(R.m,A.x,A.y,0)||!ctx.inside(R.m,D.x,D.y,-1500))continue;
+    if(R.m.noGuard||cleared.has(R.id)||ctx.inside(R.m,A.x,A.y,0)||!ctx.inside(R.m,D.x,D.y,-1500))continue;
     for(const pad of[-2500,-1200]){for(let i=1;i<=300;i++){const t=i/300,x=A.x+(D.x-A.x)*t,y=A.y+(D.y-A.y)*t;if(ctx.inside(R.m,x,y,pad)){tx=x;ty=y;break}}if(tx!=null)break}
     if(tx!=null){rg=R.id;msg='⚠ La guardia de '+R.m.name+' intercepta tu salto';break}}
   if(tx==null)return;
@@ -71,7 +71,7 @@ function tryStart(){
     const inn=pl.some(p=>ctx.inside(R.m,p.x,p.y,2500));
     if(!inn)armed.set(id,true);                                 // al alejarse, la región vuelve a «armarse»
     else if(armed.get(id)===false&&rearm.has(id)&&ctx.clock()>rearm.get(id)){armed.set(id,true);rearm.delete(id)}   // si te quedas tras rechazar, vuelven a preguntar
-    if(cleared.has(id)||armed.get(id)===false)continue;
+    if(R.m.noGuard||cleared.has(id)||armed.get(id)===false)continue;
     const p=pl.find(q=>ctx.inside(R.m,q.x,q.y,-1000));if(p){start(R,p);return}}}
 function start(R,p){
   const c=cfg(R),a0=rnd(0,TAU),ix=ixR===R.id;ixR=null;armed.set(R.id,false);

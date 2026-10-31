@@ -1,0 +1,84 @@
+{
+ "id": "region-05",
+ "seed": 1505,
+ "tier": 3,
+ "danger": 1,
+ "regenMin": 30,
+ "asteroids": {
+  "fields": [
+   {
+    "n": "Cinturón de Ilyria",
+    "x": 205000,
+    "y": -262000,
+    "rx": 14000,
+    "ry": 5500,
+    "rot": -0.7,
+    "count": 140,
+    "tier": 3,
+    "ore": [
+     [
+      "ti",
+      0.3
+     ],
+     [
+      "ir",
+      0.3
+     ],
+     [
+      "pt",
+      0.25
+     ],
+     [
+      "ne",
+      0.15
+     ]
+    ]
+   },
+   {
+    "n": "Escombros de Ilyria",
+    "x": 28000,
+    "y": -110000,
+    "rx": 9000,
+    "ry": 4000,
+    "rot": 0.5,
+    "count": 90,
+    "tier": 2,
+    "ore": [
+     [
+      "cr",
+      0.3
+     ],
+     [
+      "pt",
+      0.3
+     ],
+     [
+      "ti",
+      0.25
+     ],
+     [
+      "ir",
+      0.15
+     ]
+    ]
+   }
+  ]
+ },
+ "planets": [
+  {
+   "id": "ilyria",
+   "n": "Ilyria",
+   "type": "terran",
+   "x": 112000,
+   "y": -181000,
+   "r": 70000,
+   "seed": 7311,
+   "desc": "Un mundo oceánico de continentes verdes y casquetes helados, envuelto en una atmósfera densa. Su tamaño empequeñece cualquier nave.",
+   "grav": 0.92,
+   "temp": 17,
+   "atm": "Nitrógeno y oxígeno",
+   "day": "26 h",
+   "comp": "Rocoso con océanos de agua líquida"
+  }
+ ]
+}

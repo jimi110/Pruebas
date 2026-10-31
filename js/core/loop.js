@@ -7,8 +7,8 @@
 let last=performance.now();
 function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;time+=dt;
   for(const t of toasts)t.life-=dt;toasts=toasts.filter(t=>t.life>0);
-  if(state==='menu')menuTick(dt);if(!wtOn&&(state==='play'||state==='map'||state==='ship'||state==='hangar'||state==='menu'||(state==='pause'&&MP.role)))upd(dt);else if(state==='warp'){updWarp(dt);for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);if(!warp||!warp.done)worldUpd(dt);else wingUpd(dt)}
-  if(state==='ship')shipTick();if(state==='ship')shipAnim(dt);if(state==='play'||state==='warp'||state==='ship'||state==='menu')starTick(dt);render();audioTick();syncPP();dockUI();if(time-svT>4){svT=time;saveGame()}if(invT<time-.4&&!$('invP').classList.contains('hide')){invT=time;invRender()}requestAnimationFrame(loop)}
+  if(state==='menu')menuTick(dt);if(!wtOn&&(state==='play'||state==='map'||state==='ship'||state==='hangar'||state==='menu'||(state==='pause'&&MP.role)||(state==='planet'&&MP.role)))upd(dt);else if(state==='warp'){updWarp(dt);for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);if(!warp||!warp.done)worldUpd(dt);else wingUpd(dt)}
+  if(state==='planet')try{PLN.surfTick(dt)}catch(e){console.warn('[planetas]',e)}if(state==='ship')shipTick();if(state==='ship')shipAnim(dt);if(state==='play'||state==='warp'||state==='ship'||state==='menu')starTick(dt);render();audioTick();syncPP();dockUI();if(time-svT>4){svT=time;saveGame()}if(invT<time-.4&&!$('invP').classList.contains('hide')){invT=time;invRender()}requestAnimationFrame(loop)}
 let mnuSp=0;
 function menuTick(dt){ship.docked=null;ship.hull=ship.shd=1e6;ship.parts=fp();ship.en=100;ship.dead=0;ship.mt=ship.mc=null;
  const E=npcs.filter(n=>n.team==='e'&&dist(n,ship)<1700);let L=ship.lock;

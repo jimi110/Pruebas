@@ -85,7 +85,7 @@ async function loadRegistry(){
       if(q&&q.enabled===false)continue;   // región desactivada en regions.json: no se carga ni se dibuja
       if(!ok){console.warn('[regiones] entrada de registro inválida, se ignora:',q&&q.id);continue}
       seen.add(q.id);idxs.add(q.idx);
-      const m={id:q.id,idx:q.idx,name:String(q.name||q.id),builtin:!!q.builtin,file:q.file,shape:q.shape==='circle'||q.shape==='ellipse'||q.shape==='blob'?q.shape:'rect',x:+q.x,y:+q.y,r:+q.r||0,w:+q.w||(+q.r*2),h:+q.h||(+q.r*2),density:cl(num(q.density,.5),0,3),color:/^\d{1,3},\d{1,3},\d{1,3}$/.test(q.color)?q.color:'150,180,220',v:q.v|0};
+      const m={id:q.id,idx:q.idx,name:String(q.name||q.id),builtin:!!q.builtin,file:q.file,shape:q.shape==='circle'||q.shape==='ellipse'||q.shape==='blob'?q.shape:'rect',x:+q.x,y:+q.y,r:+q.r||0,w:+q.w||(+q.r*2),h:+q.h||(+q.r*2),noGuard:q.guard===false,density:cl(num(q.density,.5),0,3),color:/^\d{1,3},\d{1,3},\d{1,3}$/.test(q.color)?q.color:'150,180,220',v:q.v|0};
       if(m.shape==='blob')m.ph=[0,1,2,3].map(i=>h32(m.id+':contorno:'+i)%628/100);
       if(m.builtin&&m.shape==='circle'&&typeof RINGR==='number')m.r=Math.max(m.r,Math.ceil((RINGR+(typeof RINGW==='number'?RINGW:2400))*1.08));   // la región original abarca su aro
       const R={id:m.id,m,st:m.builtin?'builtin':'idle',det:null,tries:0,retry:0,use:0,dep:new Map(),def:new Set(),fd:new Set(),vis:false,act:new Map(),grid:new Map(),ast:[],build:null,done:false,sent:new Map(),stn:[],spk:null,want:-99,todo:[],off:[]};
@@ -110,9 +110,10 @@ function norm(d,R){
   if(total>AIDS-1)throw new Error('demasiados asteroides en '+R.id);
   const S=(a,m)=>(Array.isArray(a)?a:[]).slice(0,m);
   for(const s of S(d.stations,40))if(s&&s.n&&Number.isFinite(+s.x)&&Number.isFinite(+s.y))o.stations.push({n:String(s.n),x:+s.x,y:+s.y,r:cl(num(s.r,200),50,800),col:/^#[0-9a-f]{6}$/i.test(s.col)?s.col:'#7dff9b',tag:String(s.tag||'ESTACIÓN'),small:s.small?1:0,mult:cl(num(s.mult,1),.5,3),info:s.info?String(s.info):undefined,sty:s.sty?String(s.sty).slice(0,12):undefined,gd:cl(num(s.guards,0)|0,0,8)});
-  for(const a of S(d.anomalies,100))if(a&&Number.isFinite(+a.x)&&Number.isFinite(+a.y))o.anomalies.push({id:String(a.id||'a'+o.anomalies.length),t:a.t==='i'||a.t==='w'?a.t:'e',n:String(a.n||'Anomalía'),x:+a.x,y:+a.y,r:cl(num(a.r,600),60,8000),col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(a.col)?a.col:'120,255,170'});
+  for(const a of S(d.anomalies,100))if(a&&Number.isFinite(+a.x)&&Number.isFinite(+a.y))o.anomalies.push({fx:a.fx==='shield'?'shield':undefined,ph:[0,1,2].map(i=>h32(String(a.id||'a')+':nube:'+i)%628/100),id:String(a.id||'a'+o.anomalies.length),t:a.t==='i'||a.t==='w'?a.t:'e',n:String(a.n||'Anomalía'),x:+a.x,y:+a.y,r:cl(num(a.r,600),60,8000),col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(a.col)?a.col:'120,255,170'});
   for(const p of S(d.poi,100))if(p&&Number.isFinite(+p.x)&&Number.isFinite(+p.y))o.poi.push({id:String(p.id||'p'+o.poi.length),n:String(p.n||'Punto de interés'),kind:p.kind==='gear'||p.kind==='laser'?p.kind:undefined,x:+p.x,y:+p.y,col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(p.col)?p.col:'255,220,120'});
   for(const e of S(d.enemies,300))if(e&&Number.isFinite(+e.x)&&Number.isFinite(+e.y))o.enemies.push({id:String(e.id||'e'+o.enemies.length),x:+e.x,y:+e.y,n:cl(num(e.n,1)|0,1,12),radius:cl(num(e.radius,1000),100,6000),tier:cl(num(e.tier,tier),0,4)});
+  o.planets=[];for(const q of S(d.planets,12)){const P=typeof PLN!=='undefined'&&PLN.norm?PLN.norm(q,R.id):null;if(P)o.planets.push(P)}   // planetas: los valida planets.js (registro de tipos)
   if(d.event&&typeof d.event==='object')o.event=d.event;
   o.total=total;return o}
 
@@ -148,7 +149,7 @@ function addAst(R,job,k){
   for(let t=0;t<10&&!ok;t++){
     if(job.k==='f'){const a=rg()*TAU,d=Math.sqrt(rg()),kk=1+.2*(Math.sin(2*a+s1)*.5+Math.sin(3*a+s2)*.3),ex=Math.cos(a)*d*job.rx*kk,ey=Math.sin(a)*d*job.ry*kk;x=job.x+ex*cr-ey*sr;y=job.y+ex*sr+ey*cr}
     else{const[x0,y0,x1,y1]=ext(m);x=x0+rg()*(x1-x0);y=y0+rg()*(y1-y0)}
-    ok=inside(m,x,y,-100)&&!R.det.stations.some(s=>Math.hypot(s.x-x,s.y-y)<s.r+260)}
+    ok=inside(m,x,y,-100)&&!R.det.stations.some(s=>Math.hypot(s.x-x,s.y-y)<s.r+260)&&!(R.det.planets||[]).some(p=>Math.hypot(p.x-x,p.y-y)<p.r+400)}
   if(!ok)return;       // posición descartada (el índice se conserva: sigue siendo determinista)
   let q=rg(),mk='fe';for(const[o,w]of job.ore){if(q<w){mk=o;break}q-=w;mk=o}
   const r=20+rg()*30+job.tier*4,i=R.ast.length;
@@ -270,6 +271,22 @@ function stepFound(R,pl){
   for(const a of R.det.anomalies)if(!R.fd.has(a.id)&&near(pl,a.x,a.y,a.r+400)){R.fd.add(a.id);toast('📡 Descubierto: '+a.n)}
   for(const p of R.det.poi)if(!R.fd.has(p.id)&&near(pl,p.x,p.y,700)){R.fd.add(p.id);toast('📡 Descubierto: '+p.n)}}
 
+/* ---- anomalías con contorno irregular y efecto (fx:"shield": frena la nave y disuelve el escudo) ---- */
+const aK=(a,t)=>.8+.2*(.5*Math.sin(3*t+a.ph[0])+.3*Math.sin(5*t+a.ph[1])+.2*Math.sin(2*t+a.ph[2]));   // radio relativo (0.6–1)
+const inAn=(a,x,y)=>{const dx=x-a.x,dy=y-a.y;return Math.hypot(dx,dy)<=a.r*aK(a,Math.atan2(dy,dx))};
+function aPath(a,X,Y,s,m){g.beginPath();for(let i=0;i<=48;i++){const t=i/48*TAU,r=a.r*aK(a,t)*s*(m||1),x=X(a.x)+Math.cos(t)*r,y=Y(a.y)+Math.sin(t)*r;i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()}
+let fxT=0,fxOn=0,fxS=1;
+function stepFx(dt,R_){
+  let inn=false;
+  if(state==='play'&&!ship.docked&&ship.dead<=0)for(const R of R_)for(const a of R.det.anomalies)if(a.fx==='shield'&&inAn(a,ship.x,ship.y)){inn=true;break}
+  if(!inn){fxT=0;fxOn=0;return}
+  // mucha resistencia: la nave apenas se desliza (se anula casi todo el movimiento lateral y se frena el avance)
+  const fx=Math.cos(ship.a),fy=Math.sin(ship.a),vp=ship.vx*fx+ship.vy*fy,vq=-ship.vx*fy+ship.vy*fx,kp=Math.exp(-1.1*dt),kq=Math.exp(-10*dt);
+  ship.vx=fx*vp*kp-fy*vq*kq;ship.vy=fy*vp*kp+fx*vq*kq;
+  ship.hit=Math.max(ship.hit||0,1.5);                      // el escudo no se recarga dentro de la nube
+  fxT+=dt;
+  if(fxT>=3&&ship.shd>0){if(!fxOn){fxOn=fxS=ship.shd;toast('⚡ Reacción con la nube de zafiro: el escudo se ha disuelto')}ship.shd=Math.max(0,ship.shd-fxS*dt)}}   // el casco no sufre daño: solo cae el escudo (de lleno a cero en ~1 s)
+
 /* ============================== BUCLE ============================== */
 function update(dt){
   if(!regOk||typeof state==='undefined'||state==='menu')return;
@@ -284,6 +301,7 @@ function update(dt){
     if(lock){if(R.act.size){for(const e of R.act.values()){e.dead=1;byId.delete(e.id)}R.act.clear()}continue}
     if(plan)planAst(R,pl);
     stepAst(R,dt);stepEn(R,pl,2);stepGuards(R,pl,dt);if(plan)stepZ(R);if(plan)stepFound(R,pl)}
+  if(!lock)stepFx(dt,ready);
   if(lock)EV(r=>r.abort());else EV(r=>r.update(dt,CTX));
   // 3) tareas lentas (0.5 s): región actual, carga anticipada, caducidad, caché
   T.slow-=dt;if(T.slow>0)return;T.slow=.5;
@@ -360,7 +378,7 @@ function drawMap(X,Y,M){
     }else{
       g.globalAlpha=1-fs;
       if(s>.0012)for(const j of R.det.jobs)if(j.k==='f'){g.save();g.translate(X(j.x),Y(j.y));g.rotate(j.rot);g.beginPath();g.ellipse(0,0,j.rx*s,j.ry*s,0,0,TAU);g.fillStyle='rgba('+c+',.13)';g.fill();g.strokeStyle='rgba('+c+',.4)';g.lineWidth=1;g.stroke();g.restore();if(s>.0025)txt(j.nm,X(j.x),Y(j.y)+j.ry*s+11,'rgba('+c+',.8)','center',9)}
-      if(s>.0025){for(const a of R.det.anomalies){g.beginPath();g.arc(X(a.x),Y(a.y),Math.max(3,a.r*s),0,TAU);g.fillStyle='rgba('+a.col+',.28)';g.fill();txt(a.n,X(a.x),Y(a.y)-Math.max(3,a.r*s)-3,'rgba('+a.col+',.85)','center',8)}
+      if(s>.0025){for(const a of R.det.anomalies){const mm=Math.max(1,7/Math.max(1,a.r*s));aPath(a,X,Y,s,mm);g.fillStyle='rgba('+a.col+',.34)';g.fill();g.lineJoin='round';g.lineWidth=2.5;g.strokeStyle='rgba(18,34,66,.95)';g.stroke();g.lineWidth=1;g.strokeStyle='rgba('+a.col+',.55)';aPath(a,X,Y,s,mm*.94);g.stroke();txt(a.n,X(a.x),Y(a.y)-Math.max(7,a.r*s)-5,'rgba('+a.col+',.9)','center',8)}
         for(const p of R.det.poi){const x=X(p.x),y=Y(p.y);g.fillStyle='rgba('+p.col+',.95)';g.beginPath();g.moveTo(x,y-4);g.lineTo(x+4,y);g.lineTo(x,y+4);g.lineTo(x-4,y);g.closePath();g.fill();txt(p.n,x+7,y+3,'rgba('+p.col+',.8)','left',8)}}
       if(s>.012){g.fillStyle='rgba('+c+',.9)';for(let i=0;i<R.ast.length;i++){const a=R.ast[i],x=X(a.x),y=Y(a.y);if(x>-3&&x<W+3&&y>-3&&y<H+3&&!R.dep.has(i))g.fillRect(x-1,y-1,2,2)}}
       g.globalAlpha=1
@@ -373,6 +391,7 @@ function drawMap(X,Y,M){
     if(fs<1&&((px>14&&!m.builtin)||(m.builtin&&px>40&&px<1500))){const lab=m.name.toUpperCase();txt(lab,Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly)),'rgba('+c+',.95)','center',px>300?13:px>60?10:8);
       if(px>150&&!m.builtin){const sub=R.st==='ready'?'':R.st==='loading'?'cargando…':R.st==='error'?'⚠ sin datos (reintentando)':'';if(sub||px>220)txt((km(m.w)+' × '+km(m.h))+(sub?' · '+sub:''),Math.max(60,Math.min(W-60,lx)),Math.max(14,Math.min(H-8,ly))+13,'rgba('+c+',.6)','center',9)}}
   }
+  try{if(typeof PLN!=='undefined')PLN.drawMap(X,Y,M.s,LIST.filter(R=>R.st==='ready'||R.det).flatMap(R=>R.det?R.det.planets:[]))}catch(e){console.warn('[planetas]',e)}
   EV(r=>r.drawMap&&r.drawMap(X,Y,M.s));g.restore()}
 function minZoom(){if(!LIST.length)return 0;let a=1e18,b=1e18,c=-1e18,d=-1e18;for(const R of LIST){const e=ext(R.m);a=Math.min(a,e[0]);b=Math.min(b,e[1]);c=Math.max(c,e[2]);d=Math.max(d,e[3])}
   const sp=Math.max(c-a,d-b)*1.1;return cl(Math.min(W,H)/sp,.0002,.004)}
@@ -385,7 +404,7 @@ function sprite(col){let c=spr.get(col);if(c)return c;c=document.createElement('
 function drawWorld(){
   EV(r=>r.drawWorld());
   for(const R of LIST){if(R.st!=='ready')continue;
-    for(const a of R.det.anomalies){if(!vis(a.x,a.y,a.r+200))continue;const pu=.8+.2*Math.sin(time*2+a.x);g.globalAlpha=pu;g.drawImage(sprite(a.col),a.x-a.r,a.y-a.r,a.r*2,a.r*2);g.globalAlpha=1;
+    for(const a of R.det.anomalies){if(!vis(a.x,a.y,a.r+200))continue;const pu=.8+.2*Math.sin(time*2+a.x);g.globalAlpha=pu;g.drawImage(sprite(a.col),a.x-a.r,a.y-a.r,a.r*2,a.r*2);g.globalAlpha=1;if(a.fx){aPath(a,x=>x,y=>y,1);g.lineWidth=3;g.strokeStyle='rgba(18,34,66,.55)';g.stroke();g.lineWidth=1.5;g.strokeStyle='rgba('+a.col+',.4)';g.stroke()}
       if(a.t==='i'){g.strokeStyle='rgba('+a.col+',.5)';g.lineWidth=1.5;for(let i=0;i<5;i++){const t=time*1.5+i*1.26+a.y,r=a.r*(.3+.15*i);g.beginPath();g.moveTo(a.x+Math.cos(t)*r,a.y+Math.sin(t)*r);g.lineTo(a.x+Math.cos(t+.4)*(r+40),a.y+Math.sin(t+.4)*(r+40));g.stroke()}}
       txt(a.n.toUpperCase(),a.x,a.y-a.r*.5,'rgba('+a.col+',.8)','center',10)}
     for(const p of R.det.poi){if(!vis(p.x,p.y,200))continue;if(p.kind){drawBeacon(p);txt((hasBp(p.kind)?'Baliza · plano recogido':'Baliza · plano: '+BPI[p.kind].n),p.x,p.y-90,'rgba('+p.col+',.9)','center',12);continue}const k=R.fd.has(p.id),r=14+3*Math.sin(time*3);g.save();g.translate(p.x,p.y);g.rotate(time*.6);g.strokeStyle='rgba('+p.col+','+(k?.5:.9)+')';g.lineWidth=2;g.beginPath();g.moveTo(0,-r);g.lineTo(r,0);g.lineTo(0,r);g.lineTo(-r,0);g.closePath();g.stroke();g.restore();txt(p.n,p.x,p.y-26,'rgba('+p.col+',.85)','center',11)}}}
@@ -442,6 +461,7 @@ return{
   randPt:id=>{const R=REG.get(id);if(!R||!R.det)return null;const fs=R.det.jobs.filter(j=>j.k==='f');if(!fs.length)return null;const f=fs[Math.floor(Math.random()*fs.length)],a=Math.random()*TAU,d=Math.sqrt(Math.random())*.8,ex=Math.cos(a)*d*f.rx,ey=Math.sin(a)*d*f.ry,cr=Math.cos(f.rot),sr=Math.sin(f.rot);return{x:Math.round(f.x+ex*cr-ey*sr),y:Math.round(f.y+ex*sr+ey*cr),n:f.nm}},
   found:(id,fid)=>{const R=REG.get(id);return !!(R&&R.fd.has(fid))},
   vis:id=>{const R=REG.get(id);return !!(R&&R.vis)},pos:id=>{const R=REG.get(id);return R?{x:R.m.x,y:R.m.y,n:R.m.name}:null},onZoom,save,load:loadSave,dk,mpDiff,mpApply,mpHash,hash:()=>fullHash(),
+  planets:()=>{const o=[];for(const R of LIST)if(R.st==='ready'&&R.det&&R.det.planets)for(const p of R.det.planets)o.push(p);return o},
   list:()=>LIST.map(r=>({id:r.id,st:r.st,name:r.m.name})),
   debug:()=>({ev:evSt,evd:EV(r=>r.debug()),regOk,regErr:regErr&&String(regErr),hash:HASH,lock,cur:cur&&cur.id,active:byId.size,live:live.size,
     regions:LIST.map(r=>({id:r.id,st:r.st,ast:r.ast.length,act:r.act.size,dep:r.dep.size,def:r.def.size,fd:r.fd.size,built:r.done,stn:r.stn.map(s=>s.n)}))}),

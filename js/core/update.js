@@ -86,6 +86,7 @@ function upd(dt){hgTick(dt);if(typeof mkTick==='function')try{mkTick(dt);hubSync
   ship.en=Math.min(100,ship.en+T.regen*.12*dt);ship.hit-=dt;if(T.shr&&ship.hit<=0&&ship.shd<T.shd)ship.shd=Math.min(T.shd,ship.shd+T.shr*dt);ship.cool-=dt;tickRep(dt);reveal();msgT-=dt;warnT-=dt;
   if(hold&&mouse)ship.dest={x:w2x(mouse.x),y:w2y(mouse.y)};
   if(ship.orbit&&ship.lock){const om=clamp(T.spd*(on('def')?.8:1)*.6*Math.min(1,ship.thr||1)/280,.1,1.1);ship.oa=(ship.oa||0)+om*dt;ship.dest={x:ship.lock.x+Math.cos(ship.oa)*280,y:ship.lock.y+Math.sin(ship.oa)*280,auto:1}}
+  try{PLN.tick(dt)}catch(e){if(!upd.pw){upd.pw=1;console.warn('[planetas]',e)}}
   // auto-recolección
   if(ship.mt&&(ship.mt.dead||ship.mt.ore<=.01||ship.ore>=T.cargo||!on('col')||!eff('min')))ship.mt=null;if(ship.mt&&!ship.dest&&!ship.docked&&dist(ship.mt,ship)>230)ship.dest={x:ship.mt.x,y:ship.mt.y,stop:170,auto:1};
   // piloto automático

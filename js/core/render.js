@@ -83,6 +83,7 @@ function drawMap(){const M=mt(),X=x=>M.ox+x*M.s,Y=y=>M.oy+y*M.s;
 
 let VX=0,VY=0,VRd=1e9;const vis=(x,y,r=0)=>Math.hypot(x-VX,y-VY)<VRd+r;
 function drawWorld(){VX=cam.x;VY=cam.y;VRd=Math.hypot(W,H)/zoom;g.fillStyle='#02040a';g.fillRect(0,0,W,H);stars();g.save();g.translate(VPx||W/2,VPy||H/2);g.rotate(VR);g.scale(zoom,zoom);g.translate(-cam.x,-cam.y);
+  try{PLN.drawBack()}catch(e){}
   for(const b of BASES){if(!vis(b.x,b.y,b.r*2.2))continue;drawBase(b);txt(b.n.toUpperCase(),b.x,b.y-b.r*1.7,b.col,'center',Math.round(15/zoom))}
   drawTrl();RGH(r=>r.rimWorld&&r.rimWorld());if(typeof fmDraw==='function')try{fmDraw()}catch(e){}drawScz();drawSczOld();if(zoom<.3){const u=1/zoom;for(const b of BASES){g.strokeStyle=b.col;g.lineWidth=2*u;g.beginPath();g.arc(b.x,b.y,10*u,0,TAU);g.stroke();txt(b.n,b.x,b.y-18*u,b.col,'center',12*u)}}
   for(const o of ANOM){if(!vis(o.x,o.y,o.r+200))continue;const pu=.75+.25*Math.sin(time*2+o.x);
@@ -156,13 +157,13 @@ function hud(){const x=14,bw=Math.min(230,W*.4);drawMini();
 
 function render(){
   if(W<1||H<1)return;
-  if(state==='hangar'||(state==='pause'&&pauseFrom==='hangar'))drawHangar();else if(mapV()){if(state==='warp'){if(wmapF)mc={x:ship.x,y:ship.y};const s0=state;state='map';drawMap();state=s0;txt('SALTO EN CURSO → '+warp.dest.n.toUpperCase(),W/2,18,'#7dff9b','center',12)}else drawMap()}else if(state==='ship')shipView();else if(aiW&&state==='play')allyView();else drawWorld();
-  vHud(()=>{if(hgL&&state==='play')drawHgL();if(state!=='warp'&&state!=='menu'&&state!=='ship'&&state!=='hangar'&&!aiW)txt('◈ '+ship.cred+' cr',W/2,26,'#ffd166','center',19);
+  if(state==='hangar'||(state==='pause'&&pauseFrom==='hangar'))drawHangar();else if(mapV()){if(state==='warp'){if(wmapF)mc={x:ship.x,y:ship.y};const s0=state;state='map';drawMap();state=s0;txt('SALTO EN CURSO → '+warp.dest.n.toUpperCase(),W/2,18,'#7dff9b','center',12)}else drawMap()}else if(state==='ship')shipView();else if(state==='planet')PLN.render();else if(aiW&&state==='play')allyView();else drawWorld();
+  vHud(()=>{if(hgL&&state==='play')drawHgL();if(state==='play')PLN.hud();if(state!=='warp'&&state!=='menu'&&state!=='ship'&&state!=='hangar'&&!aiW)txt('◈ '+ship.cred+' cr',W/2,26,'#ffd166','center',19);
   toasts.forEach((t,i)=>{g.globalAlpha=clamp(t.life,0,1);txt(t.t,state==='ship'&&!(W<720&&W<H*1.34)?(W-Math.min(390,W*.52))/2:W/2,state==='ship'?(W<720&&W<H*1.34?H*.5-34:H-30)-(toasts.length-1-i)*22:Math.min(H*.15,80)+i*22,'#cfe8ff','center',16)});g.globalAlpha=1})}
 
 /* ===== MEJORAS: km, audio, gráficos ===== */
 const km=d=>(d/1000).toFixed(d<9950?2:1)+' km',rings=[],DEAD={h:.15,p:{eng:0,eg2:0,wpn:0,min:0,jmp:0},th:0};
-const pst=()=>({h:ship.hull/T.hull,p:ship.parts,th:Math.min(1,Math.hypot(ship.vx,ship.vy)/T.spd)});
+const pst=()=>({h:ship.hull/T.hull,p:ship.parts,th:Math.min(1,Math.hypot(ship.vx,ship.vy)/T.spd),lg:T.gear});
 let AC=null,mg=null,eN=null,mN=null;
 function au(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();mg=AC.createGain();mg.gain.value=.5;mg.connect(AC.destination)}catch(e){}}if(AC&&AC.state==='suspended')AC.resume()}
 ['pointerdown','keydown'].forEach(e=>addEventListener(e,au,{passive:true}));
@@ -438,7 +439,7 @@ function dockUI(){const vs=DK.filter(i=>!$(i).classList.contains('hide')),v=vs.j
 function thrUI(){const t=Math.round((ship.thr||1)*100),e=$('thrV');e.textContent=t+'%';e.style.color=t>100?'#ff9a4f':'#cfe8ff';$('thrK').style.top=(thrY(ship.thr||1)-9)+'px';$('thrM').style.top=thrY(1)+'px';$('thrK').style.background=t>100?'#ff9a4f':'#4fd1ff'}
 window.thrReady=1;
 function thrSet(d){if(ship.dead)return;ship.thr=clamp(Math.round(((ship.thr||1)+d)*10)/10,.1,tmx());thrUI();if(ship.thr>1)toast('Sobrecarga: más velocidad, gasta energía')}
-function brakeNow(){if(ship.dead)return;ship.dest=null;ship.orbit=null;ship.mt=null;ship.brake=1;hold=0;toast('Frenando…')}
+function brakeNow(){if(ship.dead)return;ship.dest=null;ship.orbit=null;PLN.stopNav();ship.mt=null;ship.brake=1;hold=0;toast('Frenando…')}
 {const L=$('thrL'),mv=e=>{const r=L.getBoundingClientRect(),pv=ship.thr||1,f=clamp(((r.bottom-e.clientY)/(CFG.ui||1)-9)/152,0,1);{const tm=tmx();ship.thr=clamp(Math.round((.1+f*(tm-.1))*10)/10,.1,tm)}thrUI();if(ship.thr>1&&pv<=1)toast('Sobrecarga: más velocidad, gasta energía')};L.addEventListener('pointerdown',e=>{L.setPointerCapture(e.pointerId);L._d=1;mv(e);e.preventDefault()});L.addEventListener('pointermove',e=>{if(L._d)mv(e)});L.addEventListener('pointerup',()=>{L._d=0});L.addEventListener('pointercancel',()=>{L._d=0})}thrUI();
 /* ===== Zonas libres e irregulares, aviso de disparos, cámara de nave ===== */
 const blobPath=(cx,cy,r,sd)=>{g.beginPath();for(let i=0;i<=72;i++){const a=i/72*TAU,k=1+.17*(Math.sin(a*2+sd)*.5+Math.sin(a*3+sd*1.7)*.3+Math.sin(a*5+sd*.7)*.2),x=cx+Math.cos(a)*r*k,y=cy+Math.sin(a)*r*k;i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()};
