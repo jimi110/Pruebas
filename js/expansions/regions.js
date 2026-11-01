@@ -114,6 +114,8 @@ function norm(d,R){
   for(const p of S(d.poi,100))if(p&&Number.isFinite(+p.x)&&Number.isFinite(+p.y))o.poi.push({id:String(p.id||'p'+o.poi.length),n:String(p.n||'Punto de interés'),kind:p.kind==='gear'||p.kind==='laser'?p.kind:undefined,x:+p.x,y:+p.y,col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(p.col)?p.col:'255,220,120'});
   for(const e of S(d.enemies,300))if(e&&Number.isFinite(+e.x)&&Number.isFinite(+e.y))o.enemies.push({id:String(e.id||'e'+o.enemies.length),x:+e.x,y:+e.y,n:cl(num(e.n,1)|0,1,12),radius:cl(num(e.radius,1000),100,6000),tier:cl(num(e.tier,tier),0,4)});
   o.planets=[];for(const q of S(d.planets,12)){const P=typeof PLN!=='undefined'&&PLN.norm?PLN.norm(q,R.id):null;if(P)o.planets.push(P)}   // planetas: los valida planets.js (registro de tipos)
+  for(const P of o.planets)if(P.ring&&P.ring.n>0){const n=Math.round(P.ring.n*dn);if(n>0){total+=n;o.jobs.push({k:'r',n,pl:P,tier:P.ring.tier,ore:oreTab(P.ring.ore,P.ring.tier),nm:'Anillo de '+P.n,i:o.jobs.length})}}   // anillo del planeta: mitad delantera = asteroides reales
+  if(total>AIDS-1)throw new Error('demasiados asteroides en '+R.id);
   if(d.event&&typeof d.event==='object')o.event=d.event;
   o.total=total;return o}
 
@@ -148,8 +150,10 @@ function addAst(R,job,k){
   const cr=Math.cos(job.rot||0),sr=Math.sin(job.rot||0),s1=h32(R.id+job.i)%628/100,s2=h32(job.i+R.id)%628/100;
   for(let t=0;t<10&&!ok;t++){
     if(job.k==='f'){const a=rg()*TAU,d=Math.sqrt(rg()),kk=1+.2*(Math.sin(2*a+s1)*.5+Math.sin(3*a+s2)*.3),ex=Math.cos(a)*d*job.rx*kk,ey=Math.sin(a)*d*job.ry*kk;x=job.x+ex*cr-ey*sr;y=job.y+ex*sr+ey*cr}
+    else if(job.k==='r'){const P=job.pl,q=P.ring,tt=rg()*Math.PI;if(tt<.02||tt>Math.PI-.02)continue;const t2=tt,d=((t2-q.gap[0]+Math.PI)%TAU+TAU)%TAU-Math.PI;if(Math.abs(d)<q.gap[1]/2)continue;     // solo la mitad delantera y fuera de la abertura
+      const rr=(q.in+(q.out-q.in)*rg())*P.r,ex=Math.cos(t2)*rr,ey=Math.sin(t2)*rr*q.ry,c=Math.cos(q.tilt),s_=Math.sin(q.tilt);x=P.x+ex*c-ey*s_;y=P.y+ex*s_+ey*c}
     else{const[x0,y0,x1,y1]=ext(m);x=x0+rg()*(x1-x0);y=y0+rg()*(y1-y0)}
-    ok=inside(m,x,y,-100)&&!R.det.stations.some(s=>Math.hypot(s.x-x,s.y-y)<s.r+260)&&!(R.det.planets||[]).some(p=>Math.hypot(p.x-x,p.y-y)<p.r+400)}
+    ok=inside(m,x,y,-100)&&!R.det.stations.some(s=>Math.hypot(s.x-x,s.y-y)<s.r+260)&&(job.k==='r'||!(R.det.planets||[]).some(p=>Math.hypot(p.x-x,p.y-y)<p.r+400))}
   if(!ok)return;       // posición descartada (el índice se conserva: sigue siendo determinista)
   let q=rg(),mk='fe';for(const[o,w]of job.ore){if(q<w){mk=o;break}q-=w;mk=o}
   const r=20+rg()*30+job.tier*4,i=R.ast.length;
@@ -369,7 +373,7 @@ function drawMap(X,Y,M){
       if(f>0){g.save();g.globalAlpha=f;g.lineJoin='round';
         pathShape(m,X,Y,s);g.fillStyle='#050d1c';g.fill();g.fillStyle='rgba('+c+',.13)';g.fill();
         g.setLineDash([10,6]);g.lineWidth=2;g.strokeStyle='rgba('+c+',.85)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);g.restore()}
-    }else{const f=sumF(s);if(f>0){g.save();g.globalAlpha=f;g.setLineDash([10,7]);g.lineWidth=1;g.strokeStyle='rgba('+c+',.3)';pathShape(m,X,Y,s);g.stroke();g.setLineDash([]);g.restore()}}   /* borde de la zona interior (Alfa): como el resto, se funde al acercar el zoom */
+    }
     if(!m.builtin&&px>140&&R.st!=='ready')R.want=clock;                       // el mapa pide el detalle cuando se acerca el zoom
     const fs=m.builtin?0:sumF(s);                                             // factor de resumen (igual que Alfa)
     if(fs>=1){}                                                               // zona resumida: no se dibuja nada de dentro

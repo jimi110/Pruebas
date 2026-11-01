@@ -15,7 +15,7 @@
 "use strict";
 let hubTab='nave',mkSel='fe',MKV=0,MKA=0,MKH=0,flSel=0,flMin='fe',flMode='sell',FLID=0;
 const MKN=90,MKSP=.92,MKBY=1.1,MKIN=2.2;
-const MKS0={fe:900,cu:700,cr:450,pt:260,ti:160,ir:90,ne:40,lz:150,za:110,sc:1500};
+const MKS0={fe:900,cu:700,cr:450,pt:260,ti:160,ir:90,ne:40,lz:150,za:110,il:60,se:50,sc:1500};
 /* ---------- catálogo ---------- */
 function mkItems(){const L=[];for(const k in MIN)L.push({k,raw:1,n:MIN[k][0],col:MIN[k][1],p0:C.sell*MIN[k][2],s0:MKS0[k]||300});
   for(const k in MIN)L.push({k:'i_'+k,ing:k,n:'Lingote de '+MIN[k][0].toLowerCase(),col:MIN[k][1],p0:C.sell*MIN[k][2]*MKIN,s0:Math.round((MKS0[k]||300)*.4)});
@@ -78,6 +78,8 @@ const MKL={fe:['Esqueleto de cascos, vigas y remaches. Tan común que casi nunca
  ir:['Metal densísimo y casi indestructible. Resiste presiones que aplastarían cualquier otro casco.','Escudos, cascos de élite y herramientas de minería profunda.','Muy alta: exige Sistema de minería nv.2.'],
  neu:0};
 MKL.lz=['Piedra azul profunda del Jirón Lapislázuli, una nube de rocas en movimiento. Muy apreciada como material estructural de la Nebulosa Zafiro.','Tren de aterrizaje y construcciones de la Base Zafiro.','Media: exige Sistema de minería nv.1.'];
+MKL.il=['Cristal verde nacido en los escombros y en el anillo de Ilyria. Requiere un equipo de minería de nivel 3.','Equipos avanzados y construcciones del Sistema Ilyria.','Alta: escasa y muy cotizada.'];
+MKL.se=['Piedra violeta pálida del anillo de Ilyria, fría al tacto. Requiere un equipo de minería de nivel 3.','Aleaciones y blindajes del Sistema Ilyria.','Alta: escasa y muy cotizada.'];
 MKL.za=['Cristal azul de la Nebulosa Zafiro, de gran pureza. Se extrae del Campo Zafiro.','Tren de aterrizaje y armas de precisión de la Base Zafiro.','Media: exige Sistema de minería nv.1.'];
 MKL.ne=['Materia de estrellas muertas. Apenas se estudia y casi nadie sabe trabajarla: el mineral más raro y caro.','Reactores avanzados e investigación.','Extrema: exige Sistema de minería nv.3.'];
 const MKSC=['Restos de naves y estaciones, desguazados y prensados. Se usa para reparar antes que los créditos.','Reparaciones en cualquier base.'];
@@ -86,7 +88,7 @@ const BLORE={'Base Alfa':'Primera base de la región, construida sobre el aro de
  'Base Omega':'Última base conocida, de acceso restringido. Sus guardianes atacan a quien no lleve la tarjeta. Aquí se vende la nave más avanzada y se refuerza el casco para salir al exterior.',
  'Estación Cobre':'Pequeña estación de servicio rodeada de campos de cobre. Mejoras para tu nave y poco más.','Estación Vega':'Estación de mejoras con la única tienda de armas de la región.','Estación Nova':'Estación de mejoras en el borde de los campos ricos.',
  'Estación Umbral':'La estación amarilla antes de Omega: prueba de pilotaje, tarjeta de acceso y la única fundición de la región, donde el mineral se convierte en lingotes.'};
-const mkFound=I=>{const k=I.raw?I.k:I.ing;if(!k)return'—';const L=FIELDS.filter(f=>f.tb&&f.tb.some(t=>t[0]===k)).map(f=>f.n);if(k==='lz')return 'Jirón Lapislázuli (Nebulosa Zafiro)';if(k==='za')return 'Campo Zafiro (Nebulosa Zafiro)';return L.length?L.join(' · '):'—'};
+const mkFound=I=>{const k=I.raw?I.k:I.ing;if(!k)return'—';const L=FIELDS.filter(f=>f.tb&&f.tb.some(t=>t[0]===k)).map(f=>f.n);if(k==='lz')return 'Jirón Lapislázuli (Nebulosa Zafiro)';if(k==='il'||k==='se')return 'Escombros y anillo de Ilyria (Sistema Ilyria)';if(k==='za')return 'Campo Zafiro (Nebulosa Zafiro)';return L.length?L.join(' · '):'—'};
 const mkFmt=v=>v>=100?Math.round(v)+'':v>=10?v.toFixed(1):v.toFixed(2);
 /* ---------- gráficos (SVG) ---------- */
 function mkSpark(h,col,w=70,hh=22){const mn=Math.min(...h),mx=Math.max(...h),r=Math.max(mx-mn,mx*.02,.01);const pts=h.map((v,i)=>(i/(h.length-1)*w).toFixed(1)+','+(hh-2-(v-mn)/r*(hh-4)).toFixed(1)).join(' ');
@@ -128,7 +130,7 @@ function hubBase(){const d=ship.docked,i=BASES.indexOf(d);
 <div class=card2 style="border-color:${d.col}"><span class=badge style="color:${d.col}">${d.tag||''}</span><div style="margin-top:8px">${BLORE[d.n]||d.info||''}</div>${d.info&&BLORE[d.n]?`<div class=dim style="margin-top:6px">${d.info}</div>`:''}</div>
 <div class=card2><b>DATOS</b>${kv('Tipo',d.small?'Estación':'Base')}${kv('Distancia a Base Alfa',dist+' km')}${kv('Pago por minerales','×'+d.mult,d.mult>1?'#7dff9b':'')}${kv('Radio de atraque',d.r+' u')}</div>
 <div class=card2><b>SERVICIOS</b>${sv.map(s=>kv(s[0],s[1])).join('')}</div>`}
-const hubSig=()=>hubTab+'|'+mkSel+'|'+MKV+'|'+(hubTab==='fleet'?Math.floor(time)+'|'+flSel+flMin+flMode:'')+'|'+(QX.wh?JSON.stringify(QX.wh):'')+'|'+(ship.inv?Object.keys(ship.inv).map(k=>k+Math.floor(ship.inv[k])).join():'')+'|'+Math.floor(ingTot())+'|'+(QX.mk&&QX.mk.news?QX.mk.news.t:0);
+const hubSig=()=>hubTab+'|'+mkSel+'|'+MKV+'|'+(hubTab==='fleet'?Math.floor(time)+'|'+flSel+flMin+flMode:'')+'|'+(QX.wh?JSON.stringify(QX.wh):'')+'|'+(ship.inv?Object.keys(ship.inv).map(k=>k+Math.floor(ship.inv[k])).join():'')+'|'+Math.floor(ingTot())+'|'+(QX.mk&&QX.mk.news?QX.mk.news.t:0)+'|'+(QX.bag?JSON.stringify(QX.bag):'')+'|'+(QX.cook?QX.cook.length:0)+'|'+Math.floor(ship.scrap||0);
 /* ---------- barra superior ---------- */
 let hubEl=null,hubSg='';
 function hubBar(){if(hubEl)return hubEl;hubEl=document.createElement('div');hubEl.id='hubTop';document.body.appendChild(hubEl);

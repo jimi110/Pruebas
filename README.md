@@ -36,3 +36,11 @@ código viene de un único script que se partió por secciones sin reordenarlo. 
 - **Flujo**: acercarse (el zoom se aleja solo y se permite alejar hasta ×0,03) → clic derecho (o pulsación larga) = escaneo de 6 s → menú *Información / Orbitar / Atracar*. Atracar exige el tren de aterrizaje (`T.gear`) y no se puede en gigantes gaseosos. Las escoltas no bajan.
 - **Superficie** (estado `planet`): mapa de 160×160 casillas generado por semilla, animación de descenso/despegue, mapa del planeta bloqueado que se revela al explorar (se guarda en `pl` dentro del guardado). Controles: WASD/clic, `E` despegar, `M` mapa.
 - **Meteoritos**: evento visual raro cerca de planetas con atmósfera.
+
+### Novedades (planeta, anillo, superficie, almacén)
+- **Detalle del planeta ilimitado**: al acercarte, la superficie se recalcula por *losas* a la resolución de pantalla (ruido procedural, no una imagen fija). La atmósfera es vectorial (arcos), así que el limbo se ve nítido a cualquier zoom.
+- **Anillo**: `ring` dentro del planeta en el JSON (`in, out, ry, tilt, gapAt, gap, count, tier, ore`). Mitad trasera decorativa por detrás del disco; mitad delantera = asteroides reales (minables y con colisión).
+- **Minerales nuevos** `il` Ilirita y `se` Selenita (minería nv.3), en el anillo y los escombros de Ilyria.
+- **Mapa**: un planeta sin escanear sale como «?» (sin imagen, nombre ni tipo); se desbloquea por jugador al escanearlo.
+- **Superficie**: estilo isla 2D (agua → arena → verdes), 256×256 casillas, generada con la semilla de la partida (la misma cada vez que bajas). `F` recoge rocas y plantas; van a la nave (`QX.bag`).
+- **Almacén** (`js/systems/items.js`): cuadrícula limpia, filtro, clic derecho (información, guardar, recoger, fundir, vender, triturar). Objetos nuevos: `ITM.add(id,{n,kind,col,ico,val,rar,desc,found,use})`.

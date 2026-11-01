@@ -286,7 +286,7 @@ function shipS(n,sh,col,sc,thr){const fl=flashOf(n),sp=Math.hypot(n.vx||0,n.vy||
   CURN=n;drawS(n.x,n.y,n.a||0,sh,col,sc,{h,th});CURN=null;
   if(fl){const H=HUL[sh],b=H.b.concat(H.b.map(p=>[p[0],-p[1]]).reverse());g.save();g.translate(n.x,n.y);g.rotate(n.a||0);g.scale(sc,sc);poly(b);g.fillStyle='rgba(255,255,255,'+(.5*fl)+')';g.fill();g.restore()}}
 /* estela de velocidad (aditiva) para las naves que viajan casi como un salto */
-function streak(n,col){const sp=Math.hypot(n.vx||0,n.vy||0);if(sp<1400)return;const L=Math.min(1500,sp*.11),a=Math.atan2(n.vy,n.vx),c=Math.cos(a),s=Math.sin(a);
+function streak(n,col){const sp=Math.hypot(n.vx||0,n.vy||0);if(sp<1400)return;const L=Math.min(140,sp*.04),a=Math.atan2(n.vy,n.vx),c=Math.cos(a),s=Math.sin(a);
   g.save();g.globalCompositeOperation='lighter';g.lineCap='round';
   for(const[w,al]of[[22,.16],[9,.4],[3,.9]]){g.strokeStyle='rgba('+col+','+al+')';g.lineWidth=Math.max(w,1.5/zoom);g.beginPath();g.moveTo(n.x,n.y);g.lineTo(n.x-c*L,n.y-s*L);g.stroke()}g.restore()}
 function drawBoss(n,bar){const a=n.a||0,pu=.5+.5*Math.sin(time*3),fl=flashOf(n),im=n.im;

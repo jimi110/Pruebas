@@ -24,7 +24,7 @@ const SCAN_T=6;              // segundos de escaneo
 const ORB_ALT=2400;          // altura de la órbita sobre la superficie
 const LAND_ALT=3600;         // por debajo de esta altura empieza la animación de aterrizaje
 const ZONE=26000;            // distancia a la superficie a la que empieza el zoom de aproximación
-const ZMIN_NEAR=.03;         // zoom mínimo permitido junto al planeta (normal: .5)
+const ZMIN_NEAR=.007;         // zoom mínimo permitido junto al planeta (normal: .5)
 const ZSOFT_NEAR=.12;        // zoom al que te lleva poco a poco la aproximación
 const TIERS=[768,1536],TEXP=256;   // resoluciones progresivas de la textura (la previsualización sale al instante)
 
@@ -38,8 +38,9 @@ function mkNoise(seed){
     const u=fade(x),v=fade(y),w=fade(z),A=p[xi]+yi,AA=p[A]+zi,AB=p[A+1]+zi,B=p[xi+1]+yi,BA=p[B]+zi,BB=p[B+1]+zi;
     return lerp(lerp(lerp(grad(p[AA],x,y,z),grad(p[BA],x-1,y,z),u),lerp(grad(p[AB],x,y-1,z),grad(p[BB],x-1,y-1,z),u),v),
       lerp(lerp(grad(p[AA+1],x,y,z-1),grad(p[BA+1],x-1,y,z-1),u),lerp(grad(p[AB+1],x,y-1,z-1),grad(p[BB+1],x-1,y-1,z-1),u),v),w)}
-  function fbm(x,y,z,o){let s=0,a=1,f=1,t=0;for(let i=0;i<o;i++){s+=a*n(x*f,y*f,z*f);t+=a;a*=.5;f*=2.03}return s/t}
-  return{n,fbm}}
+  const R={n,ex:0};
+  function fbm(x,y,z,o){o+=R.ex;let s=0,a=1,f=1,t=0;for(let i=0;i<o;i++){s+=a*n(x*f,y*f,z*f);t+=a;a*=.5;f*=2.03}return s/t}
+  R.fbm=fbm;return R}
 const mix3=(o,a,b,t)=>{o[0]=a[0]+(b[0]-a[0])*t;o[1]=a[1]+(b[1]-a[1])*t;o[2]=a[2]+(b[2]-a[2])*t};
 
 /* ============================== REGISTRO DE TIPOS ============================== */
@@ -106,15 +107,18 @@ function norm(q,rg){
     atm:q.atm!=null?String(q.atm).slice(0,60):(ty.atm?'Atmósfera densa':'Ninguna'),day:String(q.day||(8+((rr()*30)|0))+' h').slice(0,20),
     comp:String(q.comp||ty.comp||ty.cls).slice(0,80),
     sun:Number.isFinite(+q.sun)?+q.sun:Math.atan2(-(+q.y),-(+q.x))};
+  if(q.ring&&typeof q.ring==='object'){const R=q.ring,a=cl(num(R.in,1.3),1.05,2.5);p.ring={in:a,out:cl(num(R.out,a+.35),a+.05,3),ry:cl(num(R.ry,.3),.08,.9),tilt:num(R.tilt,-.35),gap:[num(R.gapAt,0),cl(num(R.gap,.5),0,2.5)],
+    col:/^\d{1,3},\d{1,3},\d{1,3}$/.test(R.col)?R.col:'205,190,165',n:cl(num(R.count,0)|0,0,20000),tier:cl(num(R.tier,3)|0,0,4),ore:Array.isArray(R.ore)?R.ore:null}}
   return p}
 
 /* ============================== TEXTURAS PROCEDURALES ============================== */
 const TX=new Map();           // id -> {prev,full,job,ph}
 function lightDir(p){const a=p.sun,l=[Math.cos(a)*.78,Math.sin(a)*.78,.62],n=Math.hypot(l[0],l[1],l[2]);return[l[0]/n,l[1]/n,l[2]/n]}
-function genStep(job,budget){                      // pinta filas de la textura (reparte el trabajo entre fotogramas)
-  const t0=performance.now(),{S,p,ty,N,L,data,o,c,tilt}=job,d=data.data,ct=Math.cos(tilt[0]),st=Math.sin(tilt[0]),ct2=Math.cos(tilt[1]),st2=Math.sin(tilt[1]),P=[0,0,0];
-  while(job.y<S){const j=job.y++,v=(j+.5)/S*2-1;
-    for(let i=0;i<S;i++){const u=(i+.5)/S*2-1,r2=u*u+v*v,k=(j*S+i)*4;
+function genStep(job,budget){                      // pinta filas (reparte el trabajo entre fotogramas); sirve para la textura base y para las losas de detalle
+  const t0=performance.now(),{W,S0,pad,u0,v0,du,p,ty,N,L,data,o,c,tilt}=job,d=data.data,ct=Math.cos(tilt[0]),st=Math.sin(tilt[0]),ct2=Math.cos(tilt[1]),st2=Math.sin(tilt[1]),P=[0,0,0],px=S0/du;
+  N.ex=job.ex||0;
+  while(job.y<W){const j=job.y++,v=v0+((j-pad)+.5)/S0*du;
+    for(let i=0;i<W;i++){const u=u0+((i-pad)+.5)/S0*du,r2=u*u+v*v,k=(j*W+i)*4;
       if(r2>=1.02){d[k+3]=0;continue}
       const w=Math.sqrt(Math.max(0,1-r2)),x0=u,y0=v,z0=w;
       const x1=x0*ct-y0*st,y1=x0*st+y0*ct,z1=z0;P[0]=x1;P[1]=y1*ct2-z1*st2;P[2]=y1*st2+z1*ct2;
@@ -123,12 +127,13 @@ function genStep(job,budget){                      // pinta filas de la textura 
       let R=o[0]*lit,G=o[1]*lit,B=o[2]*lit;
       if(o.spec&&lam>0){const h=Math.pow(cl(lam,0,1),28)*70;R+=h;G+=h;B+=h}
       if(c.a>0){const cc=ty.cloud&&ty.cloud.col||[255,255,255],a=c.a;R=R*(1-a)+cc[0]*lit*a;G=G*(1-a)+cc[1]*lit*a;B=B*(1-a)+cc[2]*lit*a}
-      const ed=Math.sqrt(r2),al=cl((1-ed)*S*.5*1.1,0,1);
+      const ed=Math.sqrt(r2),al=cl((1-ed)*px*1.1,0,1);
       d[k]=R;d[k+1]=G;d[k+2]=B;d[k+3]=al*255}
     if((j&7)===7&&performance.now()-t0>budget)return false}
   return true}
-function mkJob(p,S){const ty=T_(p.type),r=mulb(hx(p.id+':tilt'+p.seed)),cv=document.createElement('canvas');cv.width=cv.height=S;
-  const cx=cv.getContext('2d');return{S,p,ty,N:mkNoise(p.seed),L:lightDir(p),data:cx.createImageData(S,S),cx,cv,o:[0,0,0],c:{a:0},y:0,tilt:[r()*PI2,(r()-.5)*1.1]}}
+function mkJob(p,S){const ty=T_(p.type),cv=document.createElement('canvas');cv.width=cv.height=S;
+  const cx=cv.getContext('2d');return{S,W:S,S0:S,pad:0,u0:-1,v0:-1,du:2,ex:0,p,ty,N:noiseOf(p),L:lightDir(p),data:cx.createImageData(S,S),cx,cv,o:[0,0,0],c:{a:0},y:0,tilt:tiltOf(p)}}
+const NZ=new Map(),noiseOf=p=>{let n=NZ.get(p.id);if(!n){n=mkNoise(p.seed);NZ.set(p.id,n)}return n},tiltOf=p=>{const r=mulb(hx(p.id+':tilt'+p.seed));return[r()*PI2,(r()-.5)*1.1]};
 function texOf(p){let t=TX.get(p.id);
   if(!t){const j=mkJob(p,TEXP);genStep(j,1e9);j.cx.putImageData(j.data,0,0);t={prev:j.cv,full:null,job:null,done:false,ti:0};TX.set(p.id,t);
     if(TX.size>6){const k=TX.keys().next().value;if(k!==p.id)TX.delete(k)}}
@@ -136,6 +141,34 @@ function texOf(p){let t=TX.get(p.id);
 function texStep(p,budget){const t=TX.get(p.id);if(!t||t.done)return;
   if(!t.job)t.job=mkJob(p,TIERS[t.ti]);
   if(genStep(t.job,budget)){t.job.cx.putImageData(t.job.data,0,0);t.full=t.job.cv;t.job=null;if(++t.ti>=TIERS.length)t.done=true}}
+/* ---- LOSAS DE DETALLE: la superficie se vuelve a calcular a la resolución de pantalla (cuadrícula de losas de 256 px por nivel).
+       Al acercarte aparecen losas más finas sin límite práctico: es ruido procedural, no una imagen fija. ---- */
+const TL=new Map(),WANT=new Map(),LMAX=9;let tAct=null,frameN=0;
+function tileWant(p,L,i,j,pr){const k=p.id+'|'+L+'|'+i+'|'+j,t=TL.get(k);if(t&&t.cv){t.u=frameN;return t.cv}if(!t&&!WANT.has(k))WANT.set(k,{p,L,i,j,k,pr});else if(WANT.has(k))WANT.get(k).pr=Math.min(WANT.get(k).pr,pr);if(t)t.u=frameN;return null}
+function tileStep(budget){
+  const t0=performance.now();
+  if(tAct&&!WANT.has(tAct.k)&&tAct.job.y<tAct.job.W*.5)tAct=null;           // la losa en curso ya no se ve: se abandona
+  while(performance.now()-t0<budget){
+    if(!tAct){let b=null;for(const w of WANT.values())if(!TL.has(w.k)&&(!b||w.pr<b.pr))b=w;if(!b)return;
+      const p=b.p,n=1<<b.L,du=2/n,job=mkJob(p,1);job.S=job.W=260;job.S0=256;job.pad=2;job.u0=-1+b.i*du;job.v0=-1+b.j*du;job.du=du;job.ex=Math.min(6,b.L-2);
+      job.cv.width=job.cv.height=260;job.data=job.cx.createImageData(260,260);tAct={k:b.k,job,L:b.L,i:b.i,j:b.j};TL.set(b.k,{cv:null,u:frameN})}
+    if(genStep(tAct.job,Math.max(1,budget-(performance.now()-t0)))){tAct.job.cx.putImageData(tAct.job.data,0,0);const t=TL.get(tAct.k);if(t){t.cv=tAct.job.cv;t.u=frameN}tAct=null;
+      if(TL.size>150){let old=null;for(const[k,t2]of TL)if(t2.cv&&frameN-t2.u>120&&(!old||t2.u<old[1].u))old=[k,t2];if(old)TL.delete(old[0])}}
+    else return}}
+function drawTiles(p,x,y,r,Lt){
+  const n=1<<Lt,vr=VRd+10,uMin=(cam.x-vr-x)/r,uMax=(cam.x+vr-x)/r,vMin=(cam.y-vr-y)/r,vMax=(cam.y+vr-y)/r,
+    i0=cl(Math.floor((uMin+1)/2*n),0,n-1),i1=cl(Math.floor((uMax+1)/2*n),0,n-1),j0=cl(Math.floor((vMin+1)/2*n),0,n-1),j1=cl(Math.floor((vMax+1)/2*n),0,n-1);
+  if((i1-i0+1)*(j1-j0+1)>120)return Lt>3?drawTiles(p,x,y,r,Lt-1):0;
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+    const ua=-1+i*2/n,ub=ua+2/n,va=-1+j*2/n,vb=va+2/n,nx=cl(0,ua,ub),ny=cl(0,va,vb);if(nx*nx+ny*ny>1.02)continue;      // losa fuera del disco
+    const cx_=(ua+ub)/2,cy_=(va+vb)/2,pr=Math.hypot(x+cx_*r-cam.x,y+cy_*r-cam.y);
+    let L=Lt,ti=i,tj=j,cv=tileWant(p,L,ti,tj,pr);
+    while(!cv&&L>3){L--;ti>>=1;tj>>=1;cv=tileWant(p,L,ti,tj,pr-(Lt-L)*1e9)||null}                 // mientras llega la losa fina se ve la del nivel anterior
+    if(!cv)continue;
+    const m=1<<L,dua=2/m,lu=-1+ti*dua,lv=-1+tj*dua,sx=((ua-lu)/dua)*256+2,sy=((va-lv)/dua)*256+2,sw=(2/n)/dua*256,tx=sw/(2/n)*r*(2/n)/256*0+0;
+    const wx=x+ua*r,wy=y+va*r,ww=(ub-ua)*r,hh=(vb-va)*r,e=ww/Math.max(1,sw)*.5;
+    g.drawImage(cv,sx-.5,sy-.5,sw+1,sw+1,wx-e,wy-e,ww+2*e,hh+2*e)}}
 let detail=null;function detailPat(){if(detail)return detail;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d'),im=x.createImageData(256,256),N=mkNoise(99);
   for(let j=0;j<256;j++)for(let i=0;i<256;i++){const a=i/256*PI2,b=j/256*PI2,v=N.fbm(Math.cos(a)*1.6,Math.sin(a)*1.6,Math.cos(b)*1.6+Math.sin(b)*1.6,4)*1.4+.5*N.n(Math.cos(a)*7,Math.sin(a)*7,Math.sin(b)*7),k=(j*256+i)*4,g8=cl(128+v*190,0,255);im.data[k]=im.data[k+1]=im.data[k+2]=g8;im.data[k+3]=255}
   x.putImageData(im,0,0);detail=g.createPattern(c,'repeat');return detail}
@@ -145,33 +178,65 @@ const SV={};                                  // progreso por planeta: {sc:escan
 const sv=id=>SV[id]||(SV[id]={sc:0,ex:''});
 let list=[],listT=-9;
 function planets(){const t=performance.now();if(t-listT>300){listT=t;list=RGH(r=>r.planets())||[]}return list}
-function nearest(){let b=null,bd=1e18;for(const p of planets()){const d=Math.hypot(ship.x-p.x,ship.y-p.y)-p.r;if(d<bd){bd=d;b=p}}return b?{p:b,d:bd}:null}
+function nearest(){let b=null,bd=1e18,bz=1e18;for(const p of planets()){const dc=Math.hypot(ship.x-p.x,ship.y-p.y),d=dc-p.r,dz=dc-(p.ring?p.r*p.ring.out*1.05:p.r);if(dz<bz){bz=dz;bd=d;b=p}}return b?{p:b,d:bd,dz:bz}:null}
 function planetAt(wx,wy){for(const p of planets()){const ty=T_(p.type);if(Math.hypot(wx-p.x,wy-p.y)<p.r*(1+(ty.atm?ty.atm.h:0)))return p}return null}
 
 /* ============================== DIBUJO EN EL MUNDO ============================== */
-const ATM=new Map();
-function atmSprite(ty){let c=ATM.get(ty.id);if(c)return c;const S=1024,h=ty.atm.h,R=S/2/(1+h),col=ty.atm.col;c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),q=x.createRadialGradient(S/2,S/2,R*.8,S/2,S/2,S/2);
-  const pR=(R-R*.8)/(S/2-R*.8);q.addColorStop(0,'rgba('+col+',0)');q.addColorStop(pR*.998,'rgba('+col+',.28)');q.addColorStop(pR,'rgba('+col+',.5)');q.addColorStop(pR+.3*(1-pR),'rgba('+col+',.18)');q.addColorStop(1,'rgba('+col+',0)');
-  x.fillStyle=q;x.fillRect(0,0,S,S);ATM.set(ty.id,c);return c}
+/* ---- atmósfera vectorial: arcos concéntricos solo en la parte visible (nítida a cualquier zoom, sin degradados gigantes) ---- */
+function arcWin(x,y,rr){const dx=cam.x-x,dy=cam.y-y,d=Math.hypot(dx,dy);if(Math.abs(d-rr)>VRd*1.1)return null;if(rr<VRd*2.4)return[0,PI2];
+  const a=Math.atan2(dy,dx),hw=Math.min(Math.PI,Math.asin(Math.min(1,VRd*1.2/rr))+.03);return[a-hw,a+hw]}
+function drawAtm(p,ty,x,y,r,ah){
+  const col=ty.atm.col,NS=10;g.save();g.lineCap='butt';
+  const ring=(rr,w,A)=>{const win=arcWin(x,y,rr);if(!win)return;const span=(win[1]-win[0])/NS;g.lineWidth=w;
+    for(let k=0;k<NS;k++){const a0=win[0]+k*span,lit=.5+.5*Math.cos(a0+span/2-p.sun),al=A*(.22+.78*lit);if(al<.004)continue;g.strokeStyle='rgba('+col+','+al+')';g.beginPath();g.arc(x,y,rr,a0-.0005,a0+span+.0005);g.stroke()}};
+  for(let i=0;i<18;i++){const t=(i+.5)/18;ring(r+ah*t,ah/18*1.25,.5*Math.pow(1-t,2.2))}                 // brillo exterior hacia el espacio
+  for(let i=0;i<8;i++){const t=(i+.5)/8;ring(r-ah*.55*t,ah*.55/8*1.25,.3*Math.pow(1-t,1.8))}             // velo interior del limbo
+  ring(r,Math.max(1.6/zoom,r*.0006),.5);                                                                  // línea fina del limbo: separa planeta y atmósfera
+  g.restore()}
+
+/* ---- anillo del planeta: C inclinada con una abertura; la mitad trasera pasa por detrás del disco y la delantera por delante ---- */
+const RD=new Map(),AST_={x:0,y:0,r:0,rot:0,sh:null,m:'',nm:1};
+const inGap=(q,t)=>{const d=((t-q.gap[0]+Math.PI)%PI2+PI2)%PI2-Math.PI;return Math.abs(d)<q.gap[1]/2};
+function ringPt(p,t,k){const q=p.ring,rr=k*p.r,ex=Math.cos(t)*rr,ey=Math.sin(t)*rr*q.ry,c=Math.cos(q.tilt),s_=Math.sin(q.tilt);return[p.x+ex*c-ey*s_,p.y+ex*s_+ey*c]}
+function ringDecor(p){let d=RD.get(p.id);if(d)return d;const q=p.ring,rg=mulb(hx(p.id+':ringdecor')),o={back:[],front:[]};
+  for(let n=0;n<14000&&(o.back.length<1700||o.front.length<1500);n++){const t=rg()*PI2;if(inGap(q,t))continue;const fr=Math.sin(t)>=0,arr=fr?o.front:o.back;if(arr.length>=(fr?1500:1700))continue;
+    const k=q.in+(q.out-q.in)*rg(),[x,y]=ringPt(p,t,k),sz=12+rg()*rg()*46,sh=[];for(let v=0;v<9;v++)sh.push(.75+rg()*.4);arr.push([x,y,sz,null,rg()*PI2,sh])}
+  RD.set(p.id,o);return o}
+function ringDust(p,front){
+  const q=p.ring,vr=VRd*1.4+2500,t0=front?0:Math.PI,t1=t0+Math.PI,ST=520;g.save();g.lineCap='round';g.lineJoin='round';
+  for(let i=0;i<16;i++){const f=i/15,k=q.in+(q.out-q.in)*f,a=.1+.26*Math.pow(hc(i,7,p.seed),1.5),w=(q.out-q.in)*p.r/16*1.15;g.strokeStyle='rgba('+q.col+','+a+')';g.lineWidth=w*q.ry*1.6+w*.25;g.beginPath();let pen=false;
+    for(let n=0;n<=ST;n++){const t=t0+(t1-t0)*n/ST;if(inGap(q,t)){pen=false;continue}const pt=ringPt(p,t,k);
+      if(Math.abs(pt[0]-cam.x)>vr||Math.abs(pt[1]-cam.y)>vr){pen=false;continue}pen?g.lineTo(pt[0],pt[1]):g.moveTo(pt[0],pt[1]);pen=true}g.stroke()}
+  g.restore()}
+function ringAst(p,front){const o=ringDecor(p),L=front?o.front:o.back;
+  for(const a of L){if(!vis(a[0],a[1],a[2]*1.6+40))continue;
+    if(front){const d=Math.hypot(a[0]-ship.x,a[1]-ship.y);if(d<4600)continue;                       // cerca de la nave mandan los asteroides reales
+      g.globalAlpha=cl((d-4600)/1200,0,1)}
+    AST_.x=a[0];AST_.y=a[1];AST_.r=a[2];AST_.rot=a[4];AST_.sh=a[5];drawAst(AST_);g.globalAlpha=1}}
+
 function drawPlanet(p){
-  const ty=T_(p.type),x=p.x,y=p.y,r=p.r,ah=ty.atm?r*ty.atm.h:0;
-  if(!vis(x,y,r+ah))return;
+  const ty=T_(p.type),x=p.x,y=p.y,r=p.r,ah=ty.atm?r*ty.atm.h:0,rr=p.ring?r*p.ring.out*1.1:r+ah;
+  if(!vis(x,y,rr))return;
+  if(p.ring){ringDust(p,false);ringAst(p,false)}
+  if(!vis(x,y,r+ah))return void(p.ring&&(ringDust(p,true),ringAst(p,true)));
   const tex=texOf(p),S=tex.width;
-  // disco con textura (solo la parte visible: evita escalar un lienzo gigantesco)
+  // disco con textura base (solo la parte visible: evita escalar un lienzo gigantesco)
   const vr=VRd+10,x0=Math.max(x-r,cam.x-vr),x1=Math.min(x+r,cam.x+vr),y0=Math.max(y-r,cam.y-vr),y1=Math.min(y+r,cam.y+vr);
   if(x1>x0&&y1>y0){g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
     g.drawImage(tex,(x0-(x-r))/(2*r)*S,(y0-(y-r))/(2*r)*S,(x1-x0)/(2*r)*S,(y1-y0)/(2*r)*S,x0,y0,x1-x0,y1-y0)}
-  // detalle fino al acercarse (granulado que realza el relieve)
-  if(zoom>.045&&p.type!=='gas'){g.save();g.beginPath();g.arc(x,y,r*.995,0,PI2);g.clip();g.globalAlpha=Math.min(.5,(zoom-.045)*1.4);g.globalCompositeOperation='soft-light';
-    try{const pt=detailPat(),k=20;if(pt.setTransform)pt.setTransform(new DOMMatrix().scale(k));g.fillStyle=pt;g.fillRect(x0,y0,x1-x0,y1-y0)}catch(e){}g.restore()}
-  // atmósfera: brillo exterior del limbo + velo interior (sprite pre-dibujado y escalado)
-  if(ty.atm){g.drawImage(atmSprite(ty),x-r-ah,y-r-ah,(r+ah)*2,(r+ah)*2)}
+  // losas de detalle a la resolución de pantalla (se afinan solas al acercarte)
+  const Lt=Math.ceil(Math.log2(Math.max(1,2*r*zoom/256)));if(Lt>=3)drawTiles(p,x,y,r,Math.min(Lt,LMAX));
+  // granulado fino al acercarse mucho (por encima del último nivel de losa)
+  if(zoom>.3&&p.type!=='gas'){g.save();g.beginPath();g.arc(x,y,r*.995,0,PI2);g.clip();g.globalAlpha=Math.min(.35,(zoom-.3)*.5);g.globalCompositeOperation='soft-light';
+    try{const pt=detailPat(),k=3;if(pt.setTransform)pt.setTransform(new DOMMatrix().scale(k));g.fillStyle=pt;g.fillRect(x0,y0,x1-x0,y1-y0)}catch(e){}g.restore()}
+  if(ty.atm)drawAtm(p,ty,x,y,r,ah);
   // escaneo en curso: rejilla y barrido sobre el disco
   if(scan&&scan.p===p){const pr=sm(cl(scan.t/SCAN_T,0,1)),c='120,255,200';g.save();g.beginPath();g.arc(x,y,r,0,PI2);g.clip();g.lineWidth=2/zoom;g.strokeStyle='rgba('+c+','+(.18+.3*pr)+')';
     for(let i=-4;i<=4;i++){const yy=y+r*i/5,hw=Math.sqrt(Math.max(0,r*r-(r*i/5)**2));g.beginPath();g.moveTo(x-hw,yy);g.lineTo(x+hw,yy);g.stroke()}
     for(let i=1;i<=5;i++){g.beginPath();g.ellipse(x,y,r*Math.sin(i*Math.PI/6),r,0,0,PI2);g.stroke()}
     const sy=y-r+2*r*((scan.t*.9)%1),gr=g.createLinearGradient(0,sy-r*.12,0,sy+r*.02);gr.addColorStop(0,'rgba('+c+',0)');gr.addColorStop(1,'rgba('+c+',.45)');g.fillStyle=gr;g.fillRect(x-r,sy-r*.12,2*r,r*.14);g.restore();
     const e=(scan.t*1.2)%1;g.strokeStyle='rgba('+c+','+(.7*(1-e))+')';g.lineWidth=3/zoom;g.beginPath();g.arc(ship.x,ship.y,(40+e*320)/zoom,0,PI2);g.stroke()}
+  if(p.ring){ringDust(p,true);ringAst(p,true)}
 }
 function drawBack(){
   try{for(const p of planets())drawPlanet(p);drawMeteors()}catch(e){if(!drawBack.w){drawBack.w=1;console.warn('[planetas]',e)}}}
@@ -253,8 +318,9 @@ function tick(dt){
   if(state!=='play'){return}
   const P=planets();if(!P.length){curK=0;kPrev=0;ship.porb=ship.pland=null;scan=null;return}
   const n=nearest();
-  for(const p of P)if(Math.hypot(ship.x-p.x,ship.y-p.y)<p.r+60000){texOf(p);texStep(p,6);break}
-  zoomTick(dt,n&&n.p,n?n.d:1e18);
+  frameN++;for(const p of P)if(Math.hypot(ship.x-p.x,ship.y-p.y)<p.r+60000){texOf(p);if(!TX.get(p.id).done)texStep(p,6);else tileStep(7);break}
+  if(WANT.size>0)WANT.clear()
+  zoomTick(dt,n&&n.p,n?n.dz:1e18);
   if(scan){const p=scan.p,d=Math.hypot(ship.x-p.x,ship.y-p.y)-p.r;
     if(ship.dead>0||d>SCAN_RANGE*1.2||!P.includes(p)){scan=null;toast('Escaneo interrumpido: te alejaste demasiado')}
     else{scan.t+=dt;if(scan.t>=SCAN_T){const q=scan;scan=null;sv(p.id).sc=1;toast('✔ Escaneo completado: '+p.n);try{saveGame()}catch(e){}showInfo(p);menu(p,q.px,q.py)}}}
@@ -298,39 +364,84 @@ function hud(){
 
 /* ============================== MAPA GLOBAL ============================== */
 function drawMap(X,Y,s,L){
-  for(const p of L||[]){const ty=T_(p.type),x=X(p.x),y=Y(p.y),rr=Math.max(3,p.r*s);if(x+rr<-20||x-rr>W+20||y+rr<-20||y-rr>H+20)continue;
-    g.save();if(rr>5){try{g.imageSmoothingEnabled=true;g.drawImage(texOf(p),x-rr,y-rr,rr*2,rr*2)}catch(e){}}
+  for(const p of L||[]){const ty=T_(p.type),x=X(p.x),y=Y(p.y),rr=Math.max(4,p.r*s),known=!!sv(p.id).sc;if(x+rr*2<-20||x-rr*2>W+20||y+rr*2<-20||y-rr*2>H+20)continue;
+    g.save();
+    if(!known){          // sin escanear: solo se sabe que ahí hay un planeta (sin imagen, nombre ni tipo)
+      g.fillStyle='rgba(26,34,48,.92)';g.beginPath();g.arc(x,y,rr,0,PI2);g.fill();g.setLineDash([5,5]);g.strokeStyle='rgba(150,170,200,.55)';g.lineWidth=1.2;g.beginPath();g.arc(x,y,rr+1,0,PI2);g.stroke();g.setLineDash([]);
+      txt('?',x,y+(rr>14?10:4),'rgba(170,190,220,.7)','center',rr>14?Math.min(46,rr*.9):10);
+      if(s>.0006)txt('PLANETA SIN EXPLORAR',x,y-rr-6,'rgba(170,190,220,.75)','center',10);
+      if(s>.002)txt('Acércate y escanéalo para descubrirlo',x,y+rr+14,'rgba(170,190,220,.5)','center',10);g.restore();continue}
+    if(p.ring&&rr>3){g.strokeStyle='rgba('+p.ring.col+',.45)';g.lineWidth=Math.max(1.2,rr*(p.ring.out-p.ring.in)*.12);g.beginPath();g.ellipse(x,y,rr*(p.ring.in+p.ring.out)/2,rr*(p.ring.in+p.ring.out)/2*p.ring.ry,p.ring.tilt,0,PI2);g.stroke()}
+    if(rr>5){try{g.imageSmoothingEnabled=true;g.drawImage(texOf(p),x-rr,y-rr,rr*2,rr*2)}catch(e){}}
     else{g.fillStyle=ty.col;g.beginPath();g.arc(x,y,rr,0,PI2);g.fill()}
     g.strokeStyle='rgba(180,230,255,.7)';g.lineWidth=1;g.beginPath();g.arc(x,y,rr+1,0,PI2);g.stroke();
     if(s>.0006)txt(p.n.toUpperCase(),x,y-rr-6,'rgba(180,235,255,.95)','center',s>.003?13:10);
-    if(s>.002)txt(sv(p.id).sc?ty.cls+' · '+ty.label:'Planeta sin escanear',x,y+rr+14,'rgba(180,235,255,.6)','center',10);g.restore()}}
+    if(s>.002)txt(ty.cls+' · '+ty.label,x,y+rr+14,'rgba(180,235,255,.6)','center',10);g.restore()}}
 
 /* ============================== ATERRIZAJE Y SUPERFICIE ============================== */
-const NT=160,TS=24,NB=NT/4,DOWN=7.5,UP=6.5;       // mapa de 160×160 casillas de 24 u; el mapa del planeta se desbloquea en bloques de 4×4 casillas
+const NT=256,TS=26,NB=64,BR=12,DOWN=7.5,UP=6.5;     // 256×256 casillas de 26 u · el mapa del planeta se desbloquea en bloques de 4×4 casillas · 8 px de textura por casilla
 let LAND=null,KEYS={};
-const rgb=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+/* ---- suelo de cada tipo de planeta: estilo isla 2D suave (agua → costa de arena → verdes), generado por semilla de PARTIDA ----
+   Para otro tipo de planeta define su 'ground': kind ('island'|'plain'), col(L,m,d,o) → rellena o[0..2], solid(L,m) y deco[{t,p,when}].
+   t: tree|bush|spire|crystal (decorativos) · rock|plant (se pueden recoger). */
+const G_=(t,p,when)=>({t,p,when});
+TY.terran.ground={kind:'island',
+  col(L,m,d,o){
+    const t=cl(-L/.55,0,1);mix3(o,[70,168,214],[12,58,126],Math.pow(t,.55));const sh=cl(1+L/.09,0,1);if(sh>0)mix3(o,o,[162,224,232],sh*.6);      // agua: azul profundo → turquesa en la orilla
+    const lw=sm(cl((L+.004)/.016,0,1));
+    if(lw>0){const c=[0,0,0];mix3(c,[84,152,70],[140,192,92],cl(.5+m*.9,0,1));
+      if(L>.2&&m>.05)mix3(c,c,[38,100,56],cl((m-.05)*3.2,0,1)*cl((L-.2)*5,0,1));
+      if(L>.5)mix3(c,c,[128,126,116],cl((L-.5)*5,0,1)*.6);
+      const sd=cl(1-(L-.012)/.09-m*.25,0,1);if(sd>0){const w=[0,0,0];mix3(w,[196,178,128],[232,214,158],sm(cl(L/.05,0,1)));mix3(c,c,w,Math.pow(sd,.7))}     // costa de arena: más ancha o más estrecha según el terreno
+      mix3(o,o,c,lw)}
+    const k=1+d*.05;o[0]*=k;o[1]*=k;o[2]*=k},
+  solid:(L)=>L<.004,
+  deco:[G_('tree',.34,(L,m)=>L>.2&&m>.05),G_('rock',.05,(L)=>L>.1),G_('plant',.075,(L,m)=>L>.1&&L<.7),G_('bush',.06,(L)=>L>.1&&L<.7),G_('rock',.03,(L)=>L>.02&&L<.1)]};
+TY.desert.ground={kind:'plain',
+  col(L,m,d,o,x,y){const b=Math.sin((x*.07+L*6)+y*.02)*.5+.5;mix3(o,[196,134,76],[232,186,116],b*.65+cl(.5+m*.6,0,1)*.35);if(L>.4)mix3(o,o,[140,96,66],cl((L-.4)*4,0,1));
+    if(L<-.35)mix3(o,o,[72,46,34],cl((-.35-L)*7,0,1));const k=1+d*.05;o[0]*=k;o[1]*=k;o[2]*=k},
+  solid:(L)=>L<-.5,deco:[G_('rock',.06,(L)=>L>-.3),G_('plant',.03,(L,m)=>m>.1),G_('spire',.03,(L)=>L>.1)]};
+TY.ice.ground={kind:'plain',
+  col(L,m,d,o){mix3(o,[236,244,251],[172,206,234],cl(.5+L*.7,0,1));if(L<-.35)mix3(o,o,[34,66,106],cl((-.35-L)*6,0,1)*.9);if(L>.5)mix3(o,o,[130,142,156],cl((L-.5)*4,0,1)*.6);const k=1+d*.03;o[0]*=k;o[1]*=k;o[2]*=k},
+  solid:(L)=>L<-.5,deco:[G_('crystal',.05,(L,m)=>m>0),G_('rock',.05,(L)=>L>.1)]};
+const RNAME={terran:'Roca',desert:'Roca árida',ice:'Roca helada'},PNAME={terran:'Planta',desert:'Cactus enano',ice:'Liquen helado'};
+
 function genSurface(p){
-  const ty=T_(p.type),gr=ty.ground,N=mkNoise((p.seed^0x5bd1e995)|0),h=new Float32Array(NT*NT),m=new Float32Array(NT*NT),K=new Uint8Array(NT*NT),
-    pal=gr.pal.map(q=>({c:rgb(q[0]),solid:!!q[1],hex:q[0]})),a=Math.atan2(ship.y-p.y,ship.x-p.x),lat0=Math.abs(Math.sin(a))*.8;
-  for(let j=0;j<NT;j++)for(let i=0;i<NT;i++){const fx=i*.05,fy=j*.05,k=j*NT+i;
-    h[k]=N.fbm(fx,fy,1.3,5)*1.1+.12*N.fbm(fx*.25,fy*.25,9,2);m[k]=N.fbm(fx*1.3+40,fy*1.3,3.1,3);
-    K[k]=gr.pick(h[k],m[k],cl(lat0+(j/NT-.5)*.2,0,1))}
-  const bake=document.createElement('canvas');bake.width=bake.height=NT;const bx=bake.getContext('2d'),im=bx.createImageData(NT,NT),d=im.data;
-  for(let j=0;j<NT;j++)for(let i=0;i<NT;i++){const k=j*NT+i,c=pal[K[k]].c,sl=((h[Math.min(NT-1,j+1)*NT+Math.min(NT-1,i+1)]-h[k])*60)+(hc(i,j,p.seed)-.5)*14;
-    d[k*4]=cl(c[0]+sl,0,255);d[k*4+1]=cl(c[1]+sl,0,255);d[k*4+2]=cl(c[2]+sl,0,255);d[k*4+3]=255}
-  bx.putImageData(im,0,0);
-  let sx=NT/2|0,sy=NT/2|0,found=false;                      // punto de aterrizaje: casilla firme cerca del centro
-  const ok=(i,j)=>{for(let b=-2;b<=2;b++)for(let a2=-2;a2<=2;a2++){const q=(j+b)*NT+(i+a2);if(q<0||q>=NT*NT||pal[K[q]].solid)return false}return true};
-  for(let r=0;r<60&&!found;r++)for(let b=-r;b<=r&&!found;b++)for(let a2=-r;a2<=r&&!found;a2++)if(Math.max(Math.abs(a2),Math.abs(b))===r&&ok(sx+a2,sy+b)){sx+=a2;sy+=b;found=true}
-  return{ty,gr,pal,K,h,bake,sx:(sx+.5)*TS,sy:(sy+.5)*TS}}
-function solidAt(S,x,y){const i=Math.floor(x/TS),j=Math.floor(y/TS);if(i<0||j<0||i>=NT||j>=NT)return true;return S.pal[S.K[j*NT+i]].solid}
+  const ty=T_(p.type),gr=ty.ground,ss=(p.seed^((typeof SEED==='number'?SEED:0)*2654435761))|0,N=mkNoise(ss),
+    Lh=new Float32Array(NT*NT),Mh=new Float32Array(NT*NT),isl=gr.kind==='island';
+  for(let j=0;j<NT;j++)for(let i=0;i<NT;i++){const k=j*NT+i,x=i/NT*2-1,y=j/NT*2-1,base=N.fbm(i*.035,j*.035,1.7,5);
+    if(isl){const dd=Math.hypot(x,y)*(1+N.fbm(i*.012+9,j*.012,4,3)*.35);Lh[k]=(1-Math.pow(dd,1.7)*1.25)*.55+base*.4-.04}
+    else Lh[k]=base*1.1+.2*N.fbm(i*.01,j*.01,7,2);
+    Mh[k]=N.fbm(i*.045+40,j*.045,3.1,3)}
+  const bake=document.createElement('canvas');bake.width=bake.height=NT*BR;const bx=bake.getContext('2d',{willReadFrequently:false});
+  const S={ty,gr,ss,L:Lh,M:Mh,bake,bx,bj:0,bim:bx.createImageData(NT*BR,16),sx:0,sy:0,done:false};
+  // punto de aterrizaje: tierra firme (playa o hierba) cerca del centro
+  let sx=NT/2|0,sy=NT/2|0,found=false;
+  const ok=(i,j)=>{for(let b=-2;b<=2;b++)for(let a=-2;a<=2;a++){const q=(j+b)*NT+(i+a);if(q<0||q>=NT*NT||gr.solid(Lh[q],Mh[q]))return false}return true};
+  for(let r=0;r<80&&!found;r++)for(let b=-r;b<=r&&!found;b++)for(let a=-r;a<=r&&!found;a++)if(Math.max(Math.abs(a),Math.abs(b))===r&&ok(sx+a,sy+b)){sx+=a;sy+=b;found=true}
+  S.sx=(sx+.5)*TS;S.sy=(sy+.5)*TS;return S}
+function bakeStep(S,budget){                       // pinta la textura suave del suelo (interpolación bilineal + grano) repartida entre fotogramas
+  if(S.done)return;const t0=performance.now(),W=NT*BR,gr=S.gr,o=[0,0,0],d=S.bim.data,ss=S.ss;
+  while(S.bj<W){const rows=Math.min(16,W-S.bj);
+    for(let r=0;r<rows;r++){const py=S.bj+r,ty_=(py+.5)/BR-.5,j0=Math.max(0,Math.min(NT-2,Math.floor(ty_))),fy=cl(ty_-j0,0,1);
+      for(let px=0;px<W;px++){const tx=(px+.5)/BR-.5,i0=Math.max(0,Math.min(NT-2,Math.floor(tx))),fx=cl(tx-i0,0,1),k=j0*NT+i0;
+        const L=(S.L[k]*(1-fx)+S.L[k+1]*fx)*(1-fy)+(S.L[k+NT]*(1-fx)+S.L[k+NT+1]*fx)*fy,m=(S.M[k]*(1-fx)+S.M[k+1]*fx)*(1-fy)+(S.M[k+NT]*(1-fx)+S.M[k+NT+1]*fx)*fy,
+          dn=(hc(px>>1,py>>1,ss)-.5)*2*.6+(hc(px>>3,py>>3,ss+5)-.5)*2*.7;
+        gr.col(L,m,dn,o,px,py);const q=(r*W+px)*4;d[q]=o[0];d[q+1]=o[1];d[q+2]=o[2];d[q+3]=255}}
+    if(rows<16){const im=S.bx.createImageData(W,rows);im.data.set(d.subarray(0,W*rows*4));S.bx.putImageData(im,0,S.bj)}else S.bx.putImageData(S.bim,0,S.bj);
+    S.bj+=rows;if(performance.now()-t0>budget)break}
+  if(S.bj>=W)S.done=true}
+function Lat(S,x,y){const tx=x/TS-.5,ty_=y/TS-.5,i=Math.floor(tx),j=Math.floor(ty_);if(i<0||j<0||i>=NT-1||j>=NT-1)return -1;const fx=tx-i,fy=ty_-j,k=j*NT+i;
+  return(S.L[k]*(1-fx)+S.L[k+1]*fx)*(1-fy)+(S.L[k+NT]*(1-fx)+S.L[k+NT+1]*fx)*fy}
+function solidAt(S,x,y){const L=Lat(S,x,y);return L<-.9?true:S.gr.solid(L,0)}
+function decoAt(S,i,j){const k=j*NT+i,L=S.L[k],m=S.M[k],r=hc(i,j,S.ss+11);let acc=0;for(const d of S.gr.deco){if(!d.when(L,m))continue;acc+=d.p;if(r<acc)return d}return null}
 function exploredPct(p){let n=0,s=(LAND&&LAND.p.id===p.id)?null:sv(p.id).ex;
   if(LAND&&LAND.p.id===p.id){for(let i=0;i<LAND.rev.length;i++)n+=LAND.rev[i]}else if(s){for(let i=0;i<s.length;i++)if(s.charCodeAt(i)===49)n++}
   return Math.round(n/(NB*NB)*1000)/10}
 function mkLand(p,ph,snap){
-  const S=genSurface(p),L={p,ph,t:0,D:DOWN,S,rev:new Uint8Array(NB*NB),cx:S.sx,cy:S.sy+TS*3.2,face:Math.PI/2,tgt:null,hold:0,zf:1,part:[],autoUp:0,mapOn:0,mapT:0,snap:null,shake:0};
-  const ex=sv(p.id).ex;if(ex&&ex.length===NB*NB)for(let i=0;i<ex.length;i++)L.rev[i]=ex.charCodeAt(i)===49?1:0;
-  if(snap&&Number.isFinite(snap.cx)&&Number.isFinite(snap.cy)&&!solidAt(S,snap.cx,snap.cy)){L.cx=snap.cx;L.cy=snap.cy}
+  const S=genSurface(p),q=sv(p.id),L={p,ph,t:0,D:DOWN,S,rev:new Uint8Array(NB*NB),taken:new Set((q.tk||[]).map(x=>x|0)),cx:S.sx,cy:S.sy+TS*3.2,face:Math.PI/2,tgt:null,hold:0,zf:1,part:[],autoUp:0,mapOn:0,mapT:0,snap:null,gath:null,gt:null,walk:0};
+  const ex=q.ex;if(ex&&ex.length===NB*NB)for(let i=0;i<ex.length;i++)L.rev[i]=ex.charCodeAt(i)===49?1:0;
+  if(snap){while(!S.done)bakeStep(S,1e9);if(Number.isFinite(snap.cx)&&Number.isFinite(snap.cy)&&!solidAt(S,snap.cx,snap.cy)){L.cx=snap.cx;L.cy=snap.cy}}
   for(let i=0;i<70;i++)L.part.push({x:Math.random(),y:Math.random(),vx:.02+Math.random()*.05,vy:(Math.random()-.5)*.02,s:1+Math.random()*2});
   return L}
 function snapOf(L){const p=L.p;return{p:{id:p.id,rg:p.rg,n:p.n,type:p.type,x:p.x,y:p.y,r:p.r,seed:p.seed,desc:p.desc,grav:p.grav,temp:p.temp,atm:p.atm,day:p.day,comp:p.comp,sun:p.sun},cx:L.cx,cy:L.cy}}
@@ -345,30 +456,45 @@ function resume(sn){
 function takeoffReq(){
   const L=LAND;if(!L||L.ph!=='surf')return;
   if(Math.hypot(L.cx-L.S.sx,L.cy-L.S.sy)<TS*3.4){startUp();return}
-  L.tgt={x:L.S.sx,y:L.S.sy+TS*2.2};L.autoUp=1;toast('Volviendo a la nave…')}
-function startUp(){const L=LAND;L.ph='up';L.t=0;L.D=UP;L.autoUp=0;L.tgt=null;L.mapOn=0;closeMap();mkUI().sf.classList.add('hide');L.snap=snapOf(L);
-  L.face=-Math.PI/2}
+  L.tgt={x:L.S.sx,y:L.S.sy+TS*2.2};L.autoUp=1;L.gt=null;toast('Volviendo a la nave…')}
+function startUp(){const L=LAND;L.ph='up';L.t=0;L.D=UP;L.autoUp=0;L.tgt=null;L.mapOn=0;closeMap();mkUI().sf.classList.add('hide');L.snap=snapOf(L);L.face=-Math.PI/2;while(!L.S.done)bakeStep(L.S,1e9)}
 function finishUp(){
   const L=LAND,p=L.p;LAND=null;KEYS={};mkUI().sf.classList.add('hide');
   const a=Math.atan2(ship.y-p.y,ship.x-p.x);ship.vx=ship.vy=0;ship.dest=null;ship.brake=0;
   setState('play');ship.porb={p:planets().find(q=>q.id===p.id)||p,oa:a};toast('🚀 Despegue completado: en órbita de '+p.n);try{saveGame()}catch(e){}}
 function revealStep(L){const bi=Math.floor(L.cx/TS/4),bj=Math.floor(L.cy/TS/4);
   for(let j=bj-3;j<=bj+3;j++)for(let i=bi-3;i<=bi+3;i++){if(i<0||j<0||i>=NB||j>=NB)continue;
-    if(Math.hypot((i+.5)*4*TS-L.cx,(j+.5)*4*TS-L.cy)<TS*9&&!L.rev[j*NB+i]){L.rev[j*NB+i]=1;L.mapNew=1}}}
+    if(Math.hypot((i+.5)*4*TS-L.cx,(j+.5)*4*TS-L.cy)<TS*10&&!L.rev[j*NB+i]){L.rev[j*NB+i]=1;L.mapNew=1}}}
+/* ---- recursos recogibles (rocas y plantas) ---- */
+function nodeInfo(L,i,j){const d=decoAt(L.S,i,j);if(!d||(d.t!=='rock'&&d.t!=='plant')||L.taken.has(j*NT+i))return null;
+  const h=hc(i,j,5),h2=hc(i,j,6);return{i,j,t:d.t,x:(i+.5)*TS+(h-.5)*TS*.6,y:(j+.5)*TS+(h2-.5)*TS*.6,k:j*NT+i}}
+function nearNode(L,x,y,R){const i0=Math.floor((x-R)/TS),i1=Math.floor((x+R)/TS),j0=Math.floor((y-R)/TS),j1=Math.floor((y+R)/TS);let b=null,bd=R;
+  for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){if(i<0||j<0||i>=NT||j>=NT)continue;const n=nodeInfo(L,i,j);if(!n)continue;const d=Math.hypot(n.x-x,n.y-y);if(d<bd){bd=d;b=n}}return b}
+function gatherStart(L,n){if(L.gath)return;L.gath={n,t:0,T:.75};L.tgt=null;L.face=Math.atan2(n.y-L.cy,n.x-L.cx)}
+function gatherDone(L){const n=L.gath.n;L.gath=null;if(L.taken.has(n.k))return;L.taken.add(n.k);
+  const ty=L.p.type,id=n.t==='rock'?'roca':'planta',q=sv(L.p.id);q.tk=[...L.taken].slice(-6000);
+  const nm=n.t==='rock'?(RNAME[ty]||'Roca'):(PNAME[ty]||'Planta');
+  if(typeof ITM!=='undefined'){ITM.bagAdd(id,1,{src:L.p.n,nm,ty});toast('Recogido: '+nm.toLowerCase()+' ('+ITM.bagGet(id)+' en la nave)')}else toast('Recogido: '+nm.toLowerCase());
+  L.pop={x:n.x,y:n.y,t:0}}
 function surfTick(dt){
-  const L=LAND;if(!L)return;L.t+=dt;
-  if(L.ph==='down'){if(L.t>=L.D){L.ph='surf';L.t=0;L.snap=snapOf(L);mkUI().sf.classList.remove('hide');toast('Aterrizaje completado en '+L.p.n+' · explora la superficie');try{saveGame()}catch(e){}}return}
+  const L=LAND;if(!L)return;L.t+=dt;if(!L.S.done)bakeStep(L.S,L.ph==='surf'?10:7);
+  if(L.ph==='down'){if(L.t>=L.D){L.ph='surf';L.t=0;while(!L.S.done)bakeStep(L.S,1e9);L.snap=snapOf(L);mkUI().sf.classList.remove('hide');toast('Aterrizaje completado en '+L.p.n+' · explora la superficie ([F] recoger rocas y plantas)');try{saveGame()}catch(e){}}return}
   if(L.ph==='up'){if(L.t>=L.D)finishUp();return}
+  if(L.pop){L.pop.t+=dt;if(L.pop.t>.6)L.pop=null}
+  if(L.gath){L.gath.t+=dt;if(L.gath.t>=L.gath.T)gatherDone(L);L.walk=0;revealStep(L);return}
   // --- movimiento del explorador ---
   let dx=0,dy=0;if(KEYS.KeyW||KEYS.ArrowUp)dy--;if(KEYS.KeyS||KEYS.ArrowDown)dy++;if(KEYS.KeyA||KEYS.ArrowLeft)dx--;if(KEYS.KeyD||KEYS.ArrowRight)dx++;
-  if(dx||dy){L.tgt=null;L.autoUp=0}
-  else if(L.tgt){const tx=L.tgt.x-L.cx,ty=L.tgt.y-L.cy,d=Math.hypot(tx,ty);if(d<4){L.tgt=null;if(L.autoUp){startUp();return}}else{dx=tx/d;dy=ty/d}}
+  if(dx||dy){L.tgt=null;L.autoUp=0;L.gt=null}
+  else if(L.tgt){const tx=L.tgt.x-L.cx,ty=L.tgt.y-L.cy,d=Math.hypot(tx,ty);
+    if(L.gt&&d<TS*1.2){const n=L.gt;L.gt=null;L.tgt=null;if(!L.taken.has(n.k))gatherStart(L,n)}
+    else if(d<4){L.tgt=null;if(L.autoUp){startUp();return}}else{dx=tx/d;dy=ty/d}}
   const l=Math.hypot(dx,dy);let moving=false;
-  if(l>0){dx/=l;dy/=l;const sp=(KEYS.ShiftLeft||KEYS.ShiftRight?150:95)*dt,nx=L.cx+dx*sp,ny=L.cy+dy*sp;
+  if(l>0){dx/=l;dy/=l;const sp=(KEYS.ShiftLeft||KEYS.ShiftRight?175:105)*dt,nx=L.cx+dx*sp,ny=L.cy+dy*sp;
     if(!solidAt(L.S,nx,L.cy)){L.cx=nx;moving=true}if(!solidAt(L.S,L.cx,ny)){L.cy=ny;moving=true}
     if(moving)L.face=Math.atan2(dy,dx);else if(L.tgt&&!L.hold)L.tgt=null}
   L.walk=moving?(L.walk||0)+dt:0;
   if(Math.hypot(L.cx-L.S.sx,L.cy-L.S.sy)<TS*2.1){const a=Math.atan2(L.cy-L.S.sy,L.cx-L.S.sx),R=TS*2.1;L.cx=L.S.sx+Math.cos(a)*R;L.cy=L.S.sy+Math.sin(a)*R}   // no atraviesas la nave
+  L.near=nearNode(L,L.cx,L.cy,TS*1.7);
   L.snap=snapOf(L);revealStep(L);
   L.mapT-=dt;if(L.mapOn&&L.mapT<=0){L.mapT=.3;renderMap()}
   for(const q of L.part){q.x+=q.vx*dt;q.y+=q.vy*dt;if(q.x>1)q.x-=1;if(q.y>1)q.y-=1;if(q.y<0)q.y+=1}}
@@ -376,14 +502,14 @@ function surfTick(dt){
 /* ---- entrada: teclado y ratón/táctil sobre la superficie ---- */
 addEventListener('keydown',e=>{if(state!=='planet')return;const c=e.code;
   if(/^(KeyW|KeyA|KeyS|KeyD|Arrow(Up|Down|Left|Right)|ShiftLeft|ShiftRight)$/.test(c))KEYS[c]=1;
-  if(c==='KeyE'&&!e.repeat)takeoffReq();else if(c==='KeyM'&&!e.repeat)toggleMap();else if(c==='Escape'&&LAND&&LAND.mapOn)closeMap();
+  if(c==='KeyE'&&!e.repeat)takeoffReq();else if(c==='KeyF'&&!e.repeat&&LAND&&LAND.ph==='surf'&&LAND.near)gatherStart(LAND,LAND.near);else if(c==='KeyM'&&!e.repeat)toggleMap();else if(c==='Escape'&&LAND&&LAND.mapOn)closeMap();
   e.preventDefault();e.stopImmediatePropagation()},true);
 addEventListener('keyup',e=>{if(KEYS[e.code])delete KEYS[e.code]},true);addEventListener('blur',()=>{KEYS={}});
 function sfZ(){return cl(Math.min(W,H)/360,1.3,3.2)*(LAND?LAND.zf:1)}
 function sfWorld(px,py){const z=sfZ();return{x:LAND.cx+(px-W/2)/z,y:LAND.cy+(py-H/2)/z}}
 addEventListener('pointerdown',e=>{if(state!=='planet'||e.target!==cv||!LAND||LAND.ph!=='surf')return;e.stopImmediatePropagation();e.preventDefault();
-  LAND.hold=1;LAND.autoUp=0;const w=sfWorld(e.clientX,e.clientY);LAND.tgt=w},true);
-addEventListener('pointermove',e=>{if(state!=='planet'||!LAND||!LAND.hold)return;LAND.tgt=sfWorld(e.clientX,e.clientY)},true);
+  LAND.hold=1;LAND.autoUp=0;const w=sfWorld(e.clientX,e.clientY),n=nearNode(LAND,w.x,w.y,TS*.8);if(n){LAND.gt=n;LAND.tgt={x:n.x,y:n.y}}else{LAND.gt=null;LAND.tgt=w}},true);
+addEventListener('pointermove',e=>{if(state!=='planet'||!LAND||!LAND.hold||LAND.gt)return;LAND.tgt=sfWorld(e.clientX,e.clientY)},true);
 addEventListener('pointerup',()=>{if(LAND)LAND.hold=0},true);
 addEventListener('wheel',e=>{if(state!=='planet'||!LAND||e.target!==cv)return;e.preventDefault();e.stopImmediatePropagation();LAND.zf=cl(LAND.zf*Math.exp(-e.deltaY*.0012),.6,2)},{capture:true,passive:false});
 
@@ -391,34 +517,40 @@ addEventListener('wheel',e=>{if(state!=='planet'||!LAND||e.target!==cv)return;e.
 function toggleMap(){const L=LAND;if(!L||L.ph!=='surf')return;if(L.mapOn)closeMap();else{L.mapOn=1;L.mapT=0;mkUI();$('plMap').classList.remove('hide');renderMap()}}
 function closeMap(){if(LAND)LAND.mapOn=0;if(UI)$('plMap').classList.add('hide')}
 function renderMap(){
-  const L=LAND;if(!L)return;const box=$('plMap'),Z=10;
+  const L=LAND;if(!L)return;const box=$('plMap'),Z=8;
   if(!box._ok){box.innerHTML='<div class="sb" id="plMt" style="letter-spacing:.14em;font-size:13px"></div><canvas id="plMc" width="'+NB*Z+'" height="'+NB*Z+'"></canvas><div style="opacity:.7;font-size:12px;margin-bottom:8px">Las zonas bloqueadas (?) se desbloquean explorando el planeta a pie.</div><button class="sq" style="position:static" id="plMx">Cerrar [M]</button>';box._ok=1;$('plMx').onclick=closeMap}
   $('plMt').textContent='MAPA DE '+L.p.n.toUpperCase()+' · explorado '+exploredPct(L.p)+' %';
-  const c=$('plMc').getContext('2d'),S=L.S,bk=S.bd||(S.bd=S.bake.getContext('2d',{willReadFrequently:true}).getImageData(0,0,NT,NT).data);
+  const c=$('plMc').getContext('2d'),S=L.S,bs=4*BR;c.imageSmoothingEnabled=true;
   c.fillStyle='#050b14';c.fillRect(0,0,NB*Z,NB*Z);
   for(let j=0;j<NB;j++)for(let i=0;i<NB;i++){const x=i*Z,y=j*Z;
-    if(L.rev[j*NB+i]){let r=0,gg=0,b=0;for(let q=0;q<4;q++){const k=((j*4+q)*NT+(i*4+q))*4;r+=bk[k];gg+=bk[k+1];b+=bk[k+2]}c.fillStyle='rgb('+(r>>2)+','+(gg>>2)+','+(b>>2)+')';c.fillRect(x,y,Z,Z)}
-    else{c.fillStyle=((i+j)&1)?'#0a1626':'#08121f';c.fillRect(x,y,Z,Z);if(((i*7+j*3)%11)===0){c.fillStyle='rgba(120,200,255,.25)';c.font='8px monospace';c.fillText('?',x+3,y+8)}}}
-  c.strokeStyle='rgba(120,200,255,.12)';c.lineWidth=1;for(let i=0;i<=NB;i++){c.beginPath();c.moveTo(i*Z+.5,0);c.lineTo(i*Z+.5,NB*Z);c.stroke();c.beginPath();c.moveTo(0,i*Z+.5);c.lineTo(NB*Z,i*Z+.5);c.stroke()}
+    if(L.rev[j*NB+i])c.drawImage(S.bake,i*bs,j*bs,bs,bs,x,y,Z+.5,Z+.5);
+    else{c.fillStyle=((i+j)&1)?'#0a1626':'#08121f';c.fillRect(x,y,Z,Z);if(((i*7+j*3)%13)===0){c.fillStyle='rgba(120,200,255,.28)';c.font='7px monospace';c.fillText('?',x+2,y+7)}}}
+  c.strokeStyle='rgba(120,200,255,.10)';c.lineWidth=1;for(let i=0;i<=NB;i+=4){c.beginPath();c.moveTo(i*Z+.5,0);c.lineTo(i*Z+.5,NB*Z);c.stroke();c.beginPath();c.moveTo(0,i*Z+.5);c.lineTo(NB*Z,i*Z+.5);c.stroke()}
   const mk=(x,y,col,r)=>{c.fillStyle=col;c.beginPath();c.arc(x/TS/4*Z,y/TS/4*Z,r,0,PI2);c.fill();c.strokeStyle='#000';c.lineWidth=1;c.stroke()};
   mk(S.sx,S.sy,'#4fd1ff',4.5);mk(L.cx,L.cy,'#7dff9b',3.5)}
 
 /* ---- dibujo de la superficie y de las animaciones de descenso / despegue ---- */
 function drawGround(L,cx,cy,z,alpha){
   const S=L.S,vw=W/z,vh=H/z,i0=Math.max(0,Math.floor((cx-vw/2)/TS)),j0=Math.max(0,Math.floor((cy-vh/2)/TS)),i1=Math.min(NT-1,Math.ceil((cx+vw/2)/TS)),j1=Math.min(NT-1,Math.ceil((cy+vh/2)/TS));
-  if(i1<i0||j1<j0)return;g.save();g.globalAlpha=alpha;g.imageSmoothingEnabled=false;
-  const X=u=>W/2+(u-cx)*z,Y=v=>H/2+(v-cy)*z;
-  g.drawImage(S.bake,i0,j0,i1-i0+1,j1-j0+1,X(i0*TS),Y(j0*TS),(i1-i0+1)*TS*z,(j1-j0+1)*TS*z);
-  if(z>.55){const deco=S.gr.deco||[];
-    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=S.K[j*NT+i];
-      for(const d of deco){if(d.k!==k||hc(i,j,L.p.seed+11)>=d.p)continue;
-        const ox=(hc(i,j,5)-.5)*TS*.6,oy=(hc(i,j,6)-.5)*TS*.6,x=X((i+.5)*TS+ox),y=Y((j+.5)*TS+oy),q=(.7+hc(i,j,8)*.6)*z;
-        if(d.t==='tree'){g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(x+2*q,y+3*q,8*q,6*q,0,0,PI2);g.fill();g.fillStyle='#1d552a';g.beginPath();g.arc(x,y,8*q,0,PI2);g.fill();g.fillStyle='#2f7d3c';g.beginPath();g.arc(x-1.5*q,y-1.5*q,5*q,0,PI2);g.fill()}
-        else if(d.t==='bush'){g.fillStyle='#3d8a3a';g.beginPath();g.arc(x,y,4*q,0,PI2);g.fill()}
-        else if(d.t==='rock'){g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(x+1.5*q,y+2*q,6*q,4*q,0,0,PI2);g.fill();g.fillStyle='#8d8a84';g.beginPath();g.moveTo(x-5*q,y+2*q);g.lineTo(x-2*q,y-4*q);g.lineTo(x+4*q,y-3*q);g.lineTo(x+6*q,y+2*q);g.lineTo(x,y+4*q);g.closePath();g.fill();g.fillStyle='rgba(255,255,255,.25)';g.fillRect(x-2*q,y-3*q,3*q,2*q)}
-        else if(d.t==='spire'){g.fillStyle='#6a4328';g.beginPath();g.moveTo(x,y-9*q);g.lineTo(x+4*q,y+3*q);g.lineTo(x-4*q,y+3*q);g.closePath();g.fill()}
-        else if(d.t==='crystal'){g.fillStyle='rgba(200,235,255,.85)';g.strokeStyle='#e9f6ff';g.lineWidth=1;g.beginPath();g.moveTo(x,y-8*q);g.lineTo(x+4*q,y);g.lineTo(x,y+6*q);g.lineTo(x-4*q,y);g.closePath();g.fill();g.stroke()}
-        break}}}
+  if(i1<i0||j1<j0)return;g.save();g.globalAlpha=alpha;g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
+  const X=u=>W/2+(u-cx)*z,Y=v=>H/2+(v-cy)*z,cb=Math.floor(S.bj/BR);                          // solo se dibujan las filas ya pintadas de la textura
+  const jr=Math.min(j1,cb-1);
+  if(jr>=j0)g.drawImage(S.bake,i0*BR,j0*BR,(i1-i0+1)*BR,(jr-j0+1)*BR,X(i0*TS),Y(j0*TS),(i1-i0+1)*TS*z,(jr-j0+1)*TS*z);
+  if(z>.5&&S.done){
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const d=decoAt(S,i,j);if(!d)continue;const k=j*NT+i;if((d.t==='rock'||d.t==='plant')&&L.taken.has(k))continue;
+      const ox=(hc(i,j,5)-.5)*TS*.6,oy=(hc(i,j,6)-.5)*TS*.6,x=X((i+.5)*TS+ox),y=Y((j+.5)*TS+oy),q=(.75+hc(i,j,8)*.5)*z,sd=hc(i,j,9);
+      if(d.t==='tree'){g.fillStyle='rgba(0,20,10,.28)';g.beginPath();g.ellipse(x+3*q,y+4*q,9*q,7*q,0,0,PI2);g.fill();g.fillStyle='#235f31';g.beginPath();g.arc(x,y,9*q,0,PI2);g.fill();g.fillStyle='#34843f';g.beginPath();g.arc(x-1.8*q,y-2*q,6*q,0,PI2);g.fill();g.fillStyle='#4aa150';g.beginPath();g.arc(x-3*q,y-3.2*q,2.8*q,0,PI2);g.fill()}
+      else if(d.t==='bush'){g.fillStyle='rgba(0,20,10,.22)';g.beginPath();g.ellipse(x+1.5*q,y+2*q,5*q,3.5*q,0,0,PI2);g.fill();g.fillStyle='#3f8c3d';g.beginPath();g.arc(x,y,4.4*q,0,PI2);g.fill();g.fillStyle='#5eaa4e';g.beginPath();g.arc(x-1*q,y-1*q,2.2*q,0,PI2);g.fill()}
+      else if(d.t==='rock'){const near=L.near&&L.near.k===k;g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(x+1.8*q,y+2.4*q,7*q,4.4*q,0,0,PI2);g.fill();
+        g.fillStyle='#8b8883';g.beginPath();g.moveTo(x-6*q,y+2*q);g.lineTo(x-3*q,y-4.5*q);g.lineTo(x+3*q,y-4*q);g.lineTo(x+6.5*q,y+1*q);g.lineTo(x+2*q,y+4.4*q);g.lineTo(x-3*q,y+4*q);g.closePath();g.fill();
+        g.fillStyle='rgba(255,255,255,.28)';g.beginPath();g.moveTo(x-3*q,y-4.5*q);g.lineTo(x+3*q,y-4*q);g.lineTo(x+1*q,y-.5*q);g.lineTo(x-3.4*q,y);g.closePath();g.fill();
+        if(near){g.strokeStyle='rgba(125,255,155,'+(.6+.3*Math.sin(time*6))+')';g.lineWidth=2;g.beginPath();g.arc(x,y,10*q,0,PI2);g.stroke()}}
+      else if(d.t==='plant'){const near=L.near&&L.near.k===k,fc=sd<.33?'#ff8fc8':sd<.66?'#ffd75e':'#b79cff';g.strokeStyle='#3b8a3f';g.lineWidth=1.6*q;g.lineCap='round';
+        for(let a=0;a<4;a++){const an=-Math.PI/2+(a-1.5)*.55;g.beginPath();g.moveTo(x,y+3*q);g.quadraticCurveTo(x+Math.cos(an)*3*q,y+Math.sin(an)*4*q,x+Math.cos(an)*6.5*q,y+Math.sin(an)*7*q);g.stroke()}
+        g.fillStyle=fc;g.beginPath();g.arc(x,y-2*q,2.6*q,0,PI2);g.fill();g.fillStyle='#fff6c8';g.beginPath();g.arc(x,y-2*q,1*q,0,PI2);g.fill();
+        if(near){g.strokeStyle='rgba(125,255,155,'+(.6+.3*Math.sin(time*6))+')';g.lineWidth=2;g.beginPath();g.arc(x,y-1*q,9*q,0,PI2);g.stroke()}}
+      else if(d.t==='spire'){g.fillStyle='#6a4328';g.beginPath();g.moveTo(x,y-10*q);g.lineTo(x+4.5*q,y+3*q);g.lineTo(x-4.5*q,y+3*q);g.closePath();g.fill();g.fillStyle='rgba(255,220,170,.25)';g.beginPath();g.moveTo(x,y-10*q);g.lineTo(x+4.5*q,y+3*q);g.lineTo(x,y+3*q);g.closePath();g.fill()}
+      else if(d.t==='crystal'){g.fillStyle='rgba(200,235,255,.88)';g.strokeStyle='#e9f6ff';g.lineWidth=1;g.beginPath();g.moveTo(x,y-9*q);g.lineTo(x+4.5*q,y);g.lineTo(x,y+6*q);g.lineTo(x-4.5*q,y);g.closePath();g.fill();g.stroke()}}}
   g.restore()}
 function drawExplorer(L,z,cx,cy){
   const x=W/2+(L.cx-cx)*z,y=H/2+(L.cy-cy)*z,w=L.walk?Math.sin(L.walk*11)*.5:0,r=5.2*z;
@@ -427,7 +559,9 @@ function drawExplorer(L,z,cx,cy){
   g.fillStyle='#6a7d94';g.fillRect(-r*1.15,-r*.55,r*.6,r*1.1);                       // mochila
   g.fillStyle='#e9f2ff';g.beginPath();g.ellipse(0,0,r*(1+.06*w),r*.95,0,0,PI2);g.fill();g.strokeStyle='#9fb7d6';g.lineWidth=1.2;g.stroke();
   g.fillStyle='#4fd1ff';g.beginPath();g.ellipse(r*.45,0,r*.42,r*.5,0,0,PI2);g.fill();g.fillStyle='rgba(255,255,255,.6)';g.fillRect(r*.45,-r*.3,r*.2,r*.18);   // visor
-  g.restore()}
+  g.restore();
+  if(L.gath){const pr=L.gath.t/L.gath.T;g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=5;g.beginPath();g.arc(x,y-r*2.4,r*1.1,0,PI2);g.stroke();g.strokeStyle='#7dff9b';g.lineWidth=4;g.beginPath();g.arc(x,y-r*2.4,r*1.1,-Math.PI/2,-Math.PI/2+PI2*pr);g.stroke()}
+  if(L.pop){const k=L.pop.t/.6,px=W/2+(L.pop.x-cx)*z,py=H/2+(L.pop.y-cy)*z;g.strokeStyle='rgba(125,255,155,'+(1-k)+')';g.lineWidth=2;g.beginPath();g.arc(px,py,(8+24*k)*z/2,0,PI2);g.stroke()}}
 function drawLandShip(L,x,y,sc,th){
   g.save();g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(x+4*sc,y+6*sc,22*sc,15*sc,0,0,PI2);g.fill();g.restore();
   drawS(x,y,-Math.PI/2,T.sh,T.col,sc,{h:1,th,lg:true,p:th>0?undefined:{eng:0,eg2:0}})}
@@ -439,7 +573,8 @@ function renderLand(){
     g.fillStyle='rgba('+ty.descent.haze+',.55)';for(const q of L.part){g.fillRect(q.x*W,q.y*H,q.s,q.s)}
     const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.hypot(W,H)*.6);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,10,.45)');g.fillStyle=vg;g.fillRect(0,0,W,H);
     const u=CFG.ui||1;vHud(()=>{const pc=exploredPct(p);txt(p.n.toUpperCase()+' · '+ty.label,16,24,'#78ffc8','left',14);txt('Superficie explorada '+pc+' %',16,44,'#cfe8ff','left',12);
-      const near=Math.hypot(L.cx-L.S.sx,L.cy-L.S.sy)<TS*3.4;txt(near?'[E] Despegar':'WASD / clic: mover · [E] volver a la nave y despegar',W/2/u,(H-18)/u,near?'#7dff9b':'rgba(207,232,255,.7)','center',13)});
+      const nr=Math.hypot(L.cx-L.S.sx,L.cy-L.S.sy)<TS*3.4,bg=(typeof ITM!=='undefined')?ITM.bagCount():0;if(bg)txt('En la nave: '+bg+' objetos recogidos',16,64,'#ffd166','left',12);
+      if(L.near&&!L.gath)txt('[F] Recoger '+(L.near.t==='rock'?'roca':'planta'),W/2/u,(H-46)/u,'#7dff9b','center',14);txt(nr?'[E] Despegar':'WASD / clic: mover · [F] recoger · [E] volver a la nave y despegar',W/2/u,(H-18)/u,nr?'#7dff9b':'rgba(207,232,255,.7)','center',13)});
     return}
   const up=L.ph==='up',s=cl(up?1-L.t/L.D:L.t/L.D,0,1),sp=Math.min(W,H);
   // 1) vista orbital: la textura del planeta se agranda hasta el punto de aterrizaje
@@ -477,10 +612,10 @@ function renderLand(){
 let pendLand=null;
 function save(){const o={v:1,s:{}};
   if(LAND){let ex='';for(let i=0;i<LAND.rev.length;i++)ex+=LAND.rev[i]?'1':'0';sv(LAND.p.id).ex=ex}
-  for(const id in SV){const q=SV[id];if(q.sc||q.ex)o.s[id]={sc:q.sc?1:0,ex:q.ex||''}}
+  for(const id in SV){const q=SV[id];if(q.sc||q.ex||(q.tk&&q.tk.length))o.s[id]={sc:q.sc?1:0,ex:q.ex||'',tk:q.tk||[]}}
   if(LAND&&LAND.snap)o.land=LAND.snap;return o}
 function load(d){for(const k in SV)delete SV[k];pendLand=null;
-  if(d&&typeof d==='object'&&d.s&&typeof d.s==='object')for(const id in d.s){const q=d.s[id];if(q&&/^[\w-]{1,40}$/.test(id))SV[id]={sc:q.sc?1:0,ex:typeof q.ex==='string'&&q.ex.length===NB*NB?q.ex:''}}
+  if(d&&typeof d==='object'&&d.s&&typeof d.s==='object')for(const id in d.s){const q=d.s[id];if(q&&/^[\w-]{1,40}$/.test(id))SV[id]={sc:q.sc?1:0,ex:typeof q.ex==='string'&&q.ex.length===NB*NB?q.ex:'',tk:Array.isArray(q.tk)?q.tk.slice(0,6000).map(x=>x|0):[]}}
   if(d&&d.land&&d.land.p&&typeof d.land.p==='object')pendLand=d.land}
 function afterLoad(){if(pendLand){const sn=pendLand;pendLand=null;resume(sn)}}
 
