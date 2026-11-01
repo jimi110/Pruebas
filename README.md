@@ -37,6 +37,23 @@ código viene de un único script que se partió por secciones sin reordenarlo. 
 - **Superficie** (estado `planet`): mapa de 160×160 casillas generado por semilla, animación de descenso/despegue, mapa del planeta bloqueado que se revela al explorar (se guarda en `pl` dentro del guardado). Controles: WASD/clic, `E` despegar, `M` mapa.
 - **Meteoritos**: evento visual raro cerca de planetas con atmósfera.
 
+### Aterrizaje por zonas y multijugador en planetas
+- **Zona de aterrizaje**: el punto donde posa la nave depende del ángulo por el que baja (`L.za`, se guarda en el guardado junto a `pad`). Cae a `ZR` (=35 % del lado del mapa) del centro, en la dirección de esa zona, y busca tierra firme cerca (`genSurface(p,zn)`). La animación de descenso hace zoom a ese mismo punto del planeta, muestra el suelo real de la zona (que se desliza hasta el punto de aterrizaje), tiene nubosidad/bruma propias de la zona y el HUD indica la zona (norte, sureste…).
+- **Suelo por bandas**: la textura de la superficie se pinta empezando por la banda del aterrizaje (no de arriba abajo), así la zona se ve completa durante el descenso aunque el dispositivo sea lento.
+- **Multijugador** (`PLN.mpInfo/mpIn/mpSc/mpScan` + `mp-sync/multiplayer.js`): el paquete `st` lleva `pl` (planeta, fase bajando/superficie/subiendo, progreso, nave posada, explorador, casillas recogidas) y `psc` (planetas escaneados).
+  - Desde el espacio, quien aterriza se ve encogerse con brillo de reentrada y desaparecer; al despegar crece de nuevo.
+  - Dos naves en el mismo planeta: la segunda esquiva a la primera (`SEP` = 9 casillas) además de depender de su zona. Nadie atraviesa las naves de los demás.
+  - En la superficie se ven los exploradores de los otros (con nombre), sus naves posadas, bajando o subiendo, y aparecen en el mapa del planeta. Las rocas/plantas recogidas por uno desaparecen para todos.
+  - Lo que un jugador escanea queda escaneado para toda la sala.
+- **Minimapa**: `PLN.drawMini` pinta los planetas (textura, atmósfera, anillo) y `PLN.miniTxt` el nombre y la altitud del más cercano.
+
+### Rendimiento, niebla y mapa
+- **Niebla de exploración fuera**: el mundo ya no se oscurece en lo no explorado (`fog` en `drawWorld` solo si `!MAPALL`), así la Zona N3 y las demás se ven enteras desde el principio.
+- **Rendimiento con el zoom alejado**: con zoom < 0,15 solo se dibujan los asteroides a menos de 2 500 u de la nave (1 500 u con zoom < 0,05; `AST_NEAR` en render.js); `drawAst` baja de detalle según el tamaño en pantalla (no dibuja o usa formas planas); la atmósfera usa menos anillos cuando se ve pequeña; la textura base se escala con calidad media.
+- **Aros**: se rellenan como franjas exactas; la pasada trasera dibuja el anillo entero sin costuras y la delantera solo repinta lo que tapa al planeta (recortada al disco).
+- **Mapa grande**: el planeta usa las mismas losas de detalle que el mundo (`mapPlanet`), así no se pixela al hacer zoom.
+- **Menú flotante** (`#ctx`, p. ej. al pulsar un mineral del inventario): se cierra al pulsar fuera.
+
 ### Novedades (planeta, anillo, superficie, almacén)
 - **Detalle del planeta ilimitado**: al acercarte, la superficie se recalcula por *losas* a la resolución de pantalla (ruido procedural, no una imagen fija). La atmósfera es vectorial (arcos), así que el limbo se ve nítido a cualquier zoom.
 - **Anillo**: `ring` dentro del planeta en el JSON (`in, out, ry, tilt, gapAt, gap, count, tier, ore`). Mitad trasera decorativa por detrás del disco; mitad delantera = asteroides reales (minables y con colisión).

@@ -104,7 +104,8 @@ function wjDraw(x,y,a,code,vx,vy){if(!code)return;
  if(code<100){const k=clamp((code-1)/98,0,1),o={x:ship.x,y:ship.y,w0:warp};ship.x=x;ship.y=y;warp={t:k,t1:1,te:2,h:a,dest:{n:''}};g.save();g.translate(x,y);g.scale(.55,.55);g.translate(-x,-y);try{warpFx(0)}finally{g.restore();ship.x=o.x;ship.y=o.y;warp=o.w0}return}
  const sp=Math.hypot(vx||0,vy||0),L=Math.min(900,sp*.12),c=Math.cos(a),n=Math.sin(a);g.save();g.globalCompositeOperation='lighter';g.lineCap='round';g.strokeStyle='rgba(90,170,255,.3)';g.lineWidth=9;g.beginPath();g.moveTo(x,y);g.lineTo(x-c*L,y-n*L);g.stroke();g.strokeStyle='rgba(180,235,255,.7)';g.lineWidth=4;g.beginPath();g.moveTo(x,y);g.lineTo(x-c*L,y-n*L);g.stroke();g.restore()}
 function mpSend(){if(!MP.role||!MP.ch||state==='menu')return;
- {const P={id:MP.id,n:MP.name,ti:TYPES.indexOf(T),x:Math.round(ship.x),y:Math.round(ship.y),vx:Math.round(ship.vx||0),vy:Math.round(ship.vy||0),a:+ship.a.toFixed(2),dk:(state==='hangar'||state==='planet'||(state==='pause'&&pauseFrom==='hangar'))?1:0,dd:ship.dead>0?1:0,wk:ship.wreck?1:0,sh:MP.share?1:0,h:+clamp(ship.hull/T.hull,0,1).toFixed(2),pp:[ship.parts.eng,ship.parts.eg2,ship.parts.wpn,ship.parts.min,ship.parts.jmp].map(v=>Math.round(v)),cd:QX.card?1:0,lg:T.gear?1:0,eh:Math.round(ship.eh||0),er:ship.ehR>0?1:0,ek:Math.round((ship.fk||0)*100),wj:(state==='warp'&&warp)?[+warp.t.toFixed(2),+warp.t1.toFixed(2),+warp.te.toFixed(2),+warp.h.toFixed(3)]:0,bm:(ship.beam&&!ship.dead)?[Math.round(ship.beam.x),Math.round(ship.beam.y),ship.beam.c]:0,wg:mpWg()};
+ {const PL0=state==='planet'?PLN.mpInfo():null;const P={id:MP.id,n:MP.name,ti:TYPES.indexOf(T),x:Math.round(ship.x),y:Math.round(ship.y),vx:Math.round(ship.vx||0),vy:Math.round(ship.vy||0),a:+ship.a.toFixed(2),dk:(state==='hangar'||(state==='planet'&&!(PL0&&PL0.f!==1))||(state==='pause'&&pauseFrom==='hangar'))?1:0,dd:ship.dead>0?1:0,wk:ship.wreck?1:0,sh:MP.share?1:0,h:+clamp(ship.hull/T.hull,0,1).toFixed(2),pp:[ship.parts.eng,ship.parts.eg2,ship.parts.wpn,ship.parts.min,ship.parts.jmp].map(v=>Math.round(v)),cd:QX.card?1:0,lg:T.gear?1:0,eh:Math.round(ship.eh||0),er:ship.ehR>0?1:0,ek:Math.round((ship.fk||0)*100),wj:(state==='warp'&&warp)?[+warp.t.toFixed(2),+warp.t1.toFixed(2),+warp.te.toFixed(2),+warp.h.toFixed(3)]:0,bm:(ship.beam&&!ship.dead)?[Math.round(ship.beam.x),Math.round(ship.beam.y),ship.beam.c]:0,wg:mpWg()};
+  if(PL0)P.pl=PL0;{const sc=PLN.mpSc();if(sc)P.psc=sc}
   if(MPS.hf&&MPS.help)P[MPS.hf]=MPS.help.id;
   if(MPS.gk.length)P.gk=MPS.gk.splice(0,40);if(MPS.tc){P.tc=MPS.tc;MPS.tc=0}if(MPS.gd){P.gd=MPS.gd;MPS.gd=0}if(MPS.gp){P.gp=MPS.gp;MPS.gp=0}if(MPS.gn){P.gn=MPS.gn;MPS.gn=0}if(MPS.pb.length)P.pb=MPS.pb.splice(0,40);if(MPS.lp.length)P.lp=MPS.lp.splice(0,40);
   {const a=Object.entries(MPS.mi);if(a.length){P.mi=a.map(([i,m])=>[+i,+m.toFixed(3)]);MPS.mi={}}const c=Object.entries(MPS.mc);if(c.length){P.mc=c.map(([i,m])=>[+i,+m.toFixed(3)]);MPS.mc={}}}
@@ -112,7 +113,7 @@ function mpSend(){if(!MP.role||!MP.ch||state==='menu')return;
 function mpOnSt(p){if(!p||!p.id||p.id===MP.id||!MP.role)return;let r=MPR[p.id];if(!r)r=MPR[p.id]={id:p.id,x:p.x,y:p.y,vx:0,vy:0,a:p.a};
  r.n=mpClean(p.n)||'?';r.ti=clamp(p.ti|0,0,TYPES.length-1);r.sx=p.x;r.sy=p.y;r.svx=p.vx||0;r.svy=p.vy||0;r.sa=p.a;r.dk=p.dk;r.dd=p.dd;r.wk=p.wk|0;r.rf=p.rf||0;r.tw=p.tw||0;r.sh=p.sh|0;r.hh=p.h!=null?p.h:1;r.pp=p.pp||null;r.cd=p.cd|0;r.lg=p.lg|0;r.eh=p.eh|0;r.er=p.er|0;r.ek=p.ek|0;{const pw=r.wj;r.wj=p.wj||0;if(pw&&!r.wj)boom(p.x,p.y,24,'#bfefff');else if(pw&&r.wj&&pw[0]<pw[1]&&r.wj[0]>=r.wj[1])boom(r.x,r.y,18,'#e8fbff')}r.bm=p.bm||0;
  if(p.wg){const old=new Map((r.wgs||[]).map(q=>[q.u,q]));r.wgs=p.wg.map(q=>{const o=old.get(q[0])||{x:q[2],y:q[3],a:q[4]};o.u=q[0];o.ti=q[1];o.sx=q[2];o.sy=q[3];o.sa=q[4];o.h=q[5]/100;o.svx=q[6];o.svy=q[7];o.jp=q[8]|0;o.om=q[9];o.hs=q[10]|0;o.mb=q[11]||null;o.mk=q[12]||null;return o})}
- r.t=performance.now();mpOnSt2(p)}
+ r.t=performance.now();try{PLN.mpIn(r,p);if(p.psc)PLN.mpScan(r,p.psc)}catch(e){}mpOnSt2(p)}
 const mpLive=r=>r&&r.sx!=null&&performance.now()-r.t<5000&&!r.dk&&!r.dd;
 /* ayuda entre jugadores: un amigo con Técnico repara tu nave inutilizada; cualquier nave puede remolcarte a la base */
 function mpWreckAt(x,y){if(!MP.role)return null;let b=null,bd=55/zoom;for(const k in MPR){const r=MPR[k];if(!r.wk||r.dk||r.sx==null||performance.now()-r.t>5000)continue;const d=Math.hypot(r.x-x,r.y-y);if(d<bd){bd=d;b=r}}return b}
@@ -157,7 +158,11 @@ function mpDraw(){if(!MP||!MP.role)return;mpWreckDraw();const now=performance.no
   if(!vis(r.x,r.y,90)&&!(r.ft&&r.ft.length>1)&&!r.wj)continue;const t=TYPES[r.ti]||TYPES[0],hot=t.sh==='e'&&(r.er||r.eh>0);
   if(t.sh==='e'&&!r.wj)mpAs(r,()=>fxTrail());
   if(!vis(r.x,r.y,90))continue;
-  drawS(r.x,r.y,r.a,t.sh,hot?hexMix(t.col,'#ff2a1a',r.er?1:r.eh/100):t.col,1.1,Object.assign({lg:r.lg},mpSt(r)));
+  {const ld=r.pl&&r.pl.f!==1?r.pl:null;let lk=1;      // aterrizando / despegando de un planeta: la nave se hace pequeña y desaparece (o crece al despegar)
+  if(ld){const tt=Math.min(1,ld.s/.85),e=tt*tt*(3-2*tt);lk=Math.max(.04,ld.f===0?1-e:e);
+   g.save();g.globalCompositeOperation='lighter';const R=26+70*(1-lk),gr=g.createRadialGradient(r.x,r.y,0,r.x,r.y,R);gr.addColorStop(0,'rgba(255,205,130,'+(.3+.25*(1-lk))+')');gr.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=gr;g.beginPath();g.arc(r.x,r.y,R,0,TAU);g.fill();g.restore();
+   g.globalAlpha=lk>.12?1:lk/.12}
+  drawS(r.x,r.y,r.a,t.sh,hot?hexMix(t.col,'#ff2a1a',r.er?1:r.eh/100):t.col,1.1*lk,Object.assign({lg:r.lg},mpSt(r),ld?{th:.5}:null));g.globalAlpha=1}
   if(hot)mpAs(r,()=>heatGlow());
   mpBeamDraw(r);
   txt(r.n+(r.hh<.995?' · '+Math.round(r.hh*100)+'%':''),r.x,r.y-30,r.hh<.4?'#ffd166':'#cfe8ff','center',Math.round(11/Math.max(.4,zoom)))}}
@@ -185,7 +190,7 @@ function mpRender(){const b=$('mpBody');if(!b)return;const inR=!!MP.role;
   h+=`<label>Unirse con código</label><input id="mpCode" class="mpin" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABC234" style="text-transform:uppercase;letter-spacing:.3em"><button class="sq" data-a="join" style="margin-top:8px">Unirse a la sala</button>`}
  h+=`<div id="mpSt" class="mpH">${mpEsc(MP.msg||'')}</div>`;b.innerHTML=h;mpRenderList()}
 function mpRenderList(){const e=$('mpL');if(!e||!MP.role)return;const ps=Object.values(MP.peers);
- let h=ps.map(q=>{const me=q.id===MP.id,r=MPR[q.id],d=me?'tú':r&&r.sx!=null?(r.dk?'atracado':r.sh?km(dist(ship,r)):'ubicación oculta'):'—';return `<div><span>${mpEsc(q.n)}${q.h?' · anfitrión':''}${(me?QX.card:r&&r.cd)?' · 🔑 Omega':''}</span><span style="opacity:.7">${d}</span></div>`}).join('');
+ let h=ps.map(q=>{const me=q.id===MP.id,r=MPR[q.id],d=me?'tú':r&&r.sx!=null?(r.pl&&r.pl.f===1?'en un planeta':r.dk?'atracado':r.sh?km(dist(ship,r)):'ubicación oculta'):'—';return `<div><span>${mpEsc(q.n)}${q.h?' · anfitrión':''}${(me?QX.card:r&&r.cd)?' · 🔑 Omega':''}</span><span style="opacity:.7">${d}</span></div>`}).join('');
  if(!ps.length)h='<div><span style="opacity:.6">Conectando…</span></div>';
  h+=`<div style="border:0"><span style="opacity:.6">${ps.length}/4 jugadores</span></div>`;if(MP.hostGone)h+='<div style="border:0;color:#ff6b6b">El anfitrión ya no está en la sala</div>';
  e.innerHTML=h}

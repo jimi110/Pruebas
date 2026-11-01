@@ -55,6 +55,7 @@ function worldMenu(px,py){const wx=w2x(px),wy=w2y(py);{const al=allyAt(wx,wy);if
   let as=null,ad=40/zoom;for(const a of asts){const d=Math.hypot(a.x-wx,a.y-wy)-a.r;if(d<ad){ad=d;as=a}}
   if(as){ctxMenu(px,py,[['Minar',()=>{if(!canMine(as))return toast(needMsg(as));if(T.md.includes('col')){mode.col=true;buildModes()}ship.mt=as;ship.orbit=null;ship.dest=null}]]);return 1}return PLN.click(px,py)?1:0}
 cv.addEventListener('pointerdown',()=>{$('ctx').classList.add('hide');$('zinfo').classList.add('hide')},true);
+document.addEventListener('pointerdown',e=>{const c=$('ctx');if(c&&!c.classList.contains('hide')&&!c.contains(e.target))c.classList.add('hide')},true);   // menú flotante (p. ej. al pulsar un mineral del inventario): se cierra al pulsar fuera
 document.addEventListener('contextmenu',e=>{e.preventDefault()},true);
 cv.addEventListener('contextmenu',e=>{e.preventDefault();if(state==='map'){{const al=mapAllyAt(e.clientX,e.clientY);if(al){allyMenu(e.clientX,e.clientY,al);return}}if(ship.dead>0)return;pickPoint(e.clientX,e.clientY);showCtx(e.clientX,e.clientY)}});
 addEventListener('pointerup',()=>{hold=0;clearTimeout(lp)});addEventListener('pointercancel',()=>{hold=0});
