@@ -47,6 +47,17 @@ código viene de un único script que se partió por secciones sin reordenarlo. 
   - Lo que un jugador escanea queda escaneado para toda la sala.
 - **Minimapa**: `PLN.drawMini` pinta los planetas (textura, atmósfera, anillo) y `PLN.miniTxt` el nombre y la altitud del más cercano.
 
+### Centinela Zafiro, francotiradores y Corazón de Zafiro
+- **Balance**: el rayo de los snipers enemigos hace x3 (60 × dificultad). El rayo francotirador del jugador hace 240 de daño (naves pequeñas de un tiro, grandes de un par).
+- **Ataques de láser del jefe** (`lzLaunch` en events.js; cada 5–6,5 s, 3–4,5 s en furia): estrella (rayos desde el centro hacia todas partes), muro (fila de rayos paralelos con hueco), francotirador (rayos apuntados a ti), barrido giratorio y abanico escalonado. Antes sale la línea roja de aviso. Se suman a abanico, torpedo y escoltas, que se mantienen.
+- **Muerte**: ya no se vuelve inmune ni huye. Al llegar a 0 de vida se pone rojo, se sacude y explota por partes (≈4 s) y luego implosiona. Deja la chatarra y el **Corazón de Zafiro** en el suelo (marca en el minimapa); se recoge acercándose, como la chatarra.
+- **Objeto legendario** (`corazon_zafiro` en items.js): va a la mochila y se puede guardar en el almacén de la base; es único: no se vende ni se tritura. El antiguo contador `sp.zf` se migra solo al almacén.
+- **Multijugador**: la sala sincroniza los láseres (cada cliente daña su nave) y el objeto del suelo; cada jugador puede recoger el suyo. Versión de eventos 6: anfitrión e invitados deben tener la misma.
+
+### Campos de la Zona Zafiro
+- **Campo Zafiro** y **Jirón Lapislázuli** son ~3 veces más grandes en superficie (9000×6000 y 11500×3200), con densidad algo mayor y asteroides ×1,6 más grandes. Todo se controla desde `region-expansion-01.json`: `rx/ry/count` y los nuevos `size` (tamaño de los asteroides del campo) y `dmgMul` (multiplicador del daño por choque).
+- Chocar contra un asteroide de esos campos hace el doble de daño que en Alfa (`dm` del asteroide en `update.js`). Subida `v` de la región en `regions.json` para que se recargue.
+
 ### Rendimiento, niebla y mapa
 - **Niebla de exploración fuera**: el mundo ya no se oscurece en lo no explorado (`fog` en `drawWorld` solo si `!MAPALL`), así la Zona N3 y las demás se ven enteras desde el principio.
 - **Rendimiento con el zoom alejado**: con zoom < 0,15 solo se dibujan los asteroides a menos de 2 500 u de la nave (1 500 u con zoom < 0,05; `AST_NEAR` en render.js); `drawAst` baja de detalle según el tamaño en pantalla (no dibuja o usa formas planas); la atmósfera usa menos anillos cuando se ve pequeña; la textura base se escala con calidad media.

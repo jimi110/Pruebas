@@ -16,11 +16,13 @@
     "n": "Campo Zafiro",
     "x": 100000,
     "y": -15000,
-    "rx": 5200,
-    "ry": 3400,
+    "rx": 9000,
+    "ry": 6000,
     "rot": 0.4,
-    "count": 90,
+    "count": 310,
     "tier": 2,
+    "size": 1.6,
+    "dmgMul": 2,
     "ore": [
      [
       "cu",
@@ -48,11 +50,13 @@
     "n": "Jirón Lapislázuli",
     "x": 125000,
     "y": -4000,
-    "rx": 6500,
-    "ry": 1800,
+    "rx": 11500,
+    "ry": 3200,
     "rot": -0.6,
-    "count": 70,
+    "count": 240,
     "tier": 2,
+    "size": 1.6,
+    "dmgMul": 2,
     "ore": [
      [
       "cr",
